@@ -1,6 +1,10 @@
 [build]
 builder = "nixpacks"
+nixpkgsVersion = "nixpkgs-23.11"
+
+[build.nixpacks]
+python = "3.11"
 
 [deploy]
-startCommand = "python -m pip install -r requirements.txt && python main.py"
+startCommand = "python main.py"
 restartPolicyType = "always"
