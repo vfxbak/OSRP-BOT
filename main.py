@@ -38,10 +38,16 @@ VOID_ROLES = {
     "[directorship team]"
 }
 
+APPEAL_REVIEW_ROLES = {
+    "[management team]",
+    "[directorship team]"
+}
+
 POINT_THRESHOLD  = 10
 REMINDER_CHANNEL = "awaiting-bans"
 WELCOME_CHANNEL_ID = 1517684680005124136
 DASHBOARD_CHANNEL_ID = 1517682110842798192
+APPEALS_CHANNEL_ID = 1519408033170460672
 GUILD_ID = 1517672283513294868
 
 LOGO_PATH   = os.path.join(os.path.dirname(__file__), "logo.png")
@@ -49,10 +55,12 @@ EMBED_COLOR = 0x01D3FF
 
 POINTS_FILE = os.path.join(os.path.dirname(__file__), "points.json")
 CASES_FILE  = os.path.join(os.path.dirname(__file__), "cases.json")
+APPEALS_FILE = os.path.join(os.path.dirname(__file__), "appeals.json")
 
 last_command_channel: dict[str, int] = {}
 processed_cases: set[str] = set()
 processed_message_ids: set[int] = set()
+banned_users_pending: dict[int, int] = {}  # user_id -> ban_case_number
 
 # ── Data helpers ───────────────────────────────────────────────────────────────
 
@@ -70,6 +78,7 @@ def save_json(path, data):
 
 points_db = load_json(POINTS_FILE)
 cases_db  = load_json(CASES_FILE)
+appeals_db = load_json(APPEALS_FILE)
 
 
 def has_any_role(member: discord.Member, role_names: set) -> bool:
@@ -193,6 +202,35 @@ def build_alert_embed(
     return embed
 
 
+def build_appeal_review_embed(
+    discord_username: str,
+    discord_id: str,
+    avatar_url: str | None = None,
+    **appeal_data
+) -> discord.Embed:
+    """Build appeal embed for review channel"""
+    embed = discord.Embed(
+        description="**__Ban Appeal Submitted__**",
+        color=EMBED_COLOR,
+    )
+    if avatar_url:
+        embed.set_thumbnail(url=avatar_url)
+    
+    embed.add_field(name="Discord Username", value=discord_username, inline=True)
+    embed.add_field(name="Discord ID", value=discord_id, inline=True)
+    embed.add_field(name="\u200b", value="\u200b", inline=True)  # spacer
+    
+    embed.add_field(name="Ban Reason", value=appeal_data.get("ban_reason", "N/A"), inline=False)
+    embed.add_field(name="Time Since Ban", value=appeal_data.get("time_since_ban", "N/A"), inline=False)
+    embed.add_field(name="Why Unban?", value=appeal_data.get("why_unban", "N/A"), inline=False)
+    
+    if appeal_data.get("extra_info"):
+        embed.add_field(name="Extra Information", value=appeal_data.get("extra_info"), inline=False)
+    
+    embed.set_footer(text=f"Appeal ID: {appeal_data.get('appeal_id', 'N/A')}")
+    return embed
+
+
 # ── Daily reminder — runs at midnight UTC ─────────────────────────────────────
 
 @tasks.loop(time=datetime.time(hour=0, minute=0, tzinfo=datetime.timezone.utc))
@@ -275,6 +313,115 @@ async def on_member_join(member: discord.Member):
             ))
     
     await welcome_channel.send(embed=embed, view=DashboardButton())
+
+
+# ── Appeal Modal ────────────────────────────────���──────────────────────────────
+
+class BanAppealModal(discord.ui.Modal, title="Ban Appeal Form"):
+    discord_username = discord.ui.TextInput(label="1. Discord Username", placeholder="Your Discord username", required=True)
+    discord_id = discord.ui.TextInput(label="2. Discord ID", placeholder="Your Discord ID", required=True)
+    ban_reason = discord.ui.TextInput(label="3. Ban Reason", placeholder="What were you banned for?", required=True)
+    time_since_ban = discord.ui.TextInput(label="4. Time Since Ban", placeholder="How long ago were you banned?", required=True)
+    why_unban = discord.ui.TextInput(label="5. Why Unban?", placeholder="Why should we unban you?", required=True, style=discord.TextStyle.paragraph)
+    understand_3month = discord.ui.TextInput(label="6. 3-Month Clause", placeholder="Do you understand appeals may be denied and you must wait 3 months? (Yes/No)", required=True)
+    extra_info = discord.ui.TextInput(label="7. Extra Information", placeholder="Any additional information? (Leave blank if none)", required=False, style=discord.TextStyle.paragraph)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        
+        user_id = interaction.user.id
+        appeal_id = f"{user_id}_{int(datetime.datetime.now().timestamp())}"
+        
+        # Store appeal data
+        appeals_db[appeal_id] = {
+            "user_id": str(user_id),
+            "discord_username": self.discord_username.value,
+            "discord_id": self.discord_id.value,
+            "ban_reason": self.ban_reason.value,
+            "time_since_ban": self.time_since_ban.value,
+            "why_unban": self.why_unban.value,
+            "understand_3month": self.understand_3month.value,
+            "extra_info": self.extra_info.value,
+            "submitted_at": datetime.datetime.now().isoformat(),
+            "status": "pending"
+        }
+        save_json(APPEALS_FILE, appeals_db)
+        
+        # Get guild and appeals channel
+        guild = bot.get_guild(GUILD_ID)
+        appeals_channel = guild.get_channel(APPEALS_CHANNEL_ID)
+        
+        if not appeals_channel:
+            await interaction.followup.send("❌ Appeal channel not found. Please contact an admin.")
+            return
+        
+        # Build review embed
+        embed = build_appeal_review_embed(
+            discord_username=self.discord_username.value,
+            discord_id=self.discord_id.value,
+            avatar_url=str(interaction.user.display_avatar.url),
+            appeal_id=appeal_id,
+            ban_reason=self.ban_reason.value,
+            time_since_ban=self.time_since_ban.value,
+            why_unban=self.why_unban.value,
+            extra_info=self.extra_info.value
+        )
+        
+        # Create approve/deny buttons
+        class AppealReviewView(discord.ui.View):
+            def __init__(self):
+                super().__init__()
+            
+            @discord.ui.button(label="✅ Approve", style=discord.ButtonStyle.green)
+            async def approve_button(self, button_interaction: discord.Interaction, button: discord.ui.Button):
+                if not has_any_role(button_interaction.user, APPEAL_REVIEW_ROLES):
+                    await button_interaction.response.send_message("❌ You don't have permission to approve appeals.", ephemeral=True)
+                    return
+                
+                # Update appeal status
+                appeals_db[appeal_id]["status"] = "approved"
+                save_json(APPEALS_FILE, appeals_db)
+                
+                # Try to unban user
+                try:
+                    await guild.unban(discord.Object(int(user_id)), reason=f"Ban appeal approved - {button_interaction.user.name}")
+                    await interaction.user.send(f"�� Your ban appeal has been **APPROVED**! You have been unbanned from {guild.name}.")
+                except Exception as e:
+                    print(f"[APPEAL] Failed to unban {user_id}: {e}")
+                
+                # Update embed
+                embed.color = discord.Color.green()
+                embed.description = "**__Ban Appeal - APPROVED__**"
+                embed.add_field(name="Approved By", value=button_interaction.user.mention, inline=False)
+                await button_interaction.response.edit_message(embed=embed, view=None)
+            
+            @discord.ui.button(label="❌ Deny", style=discord.ButtonStyle.red)
+            async def deny_button(self, button_interaction: discord.Interaction, button: discord.ui.Button):
+                if not has_any_role(button_interaction.user, APPEAL_REVIEW_ROLES):
+                    await button_interaction.response.send_message("❌ You don't have permission to deny appeals.", ephemeral=True)
+                    return
+                
+                # Update appeal status
+                appeals_db[appeal_id]["status"] = "denied"
+                save_json(APPEALS_FILE, appeals_db)
+                
+                # Notify user
+                try:
+                    await interaction.user.send(f"❌ Your ban appeal has been **DENIED**. You can resubmit another appeal in 3 months.")
+                except:
+                    pass
+                
+                # Update embed
+                embed.color = discord.Color.red()
+                embed.description = "**__Ban Appeal - DENIED__**"
+                embed.add_field(name="Denied By", value=button_interaction.user.mention, inline=False)
+                await button_interaction.response.edit_message(embed=embed, view=None)
+        
+        # Send to appeals channel
+        await appeals_channel.send(embed=embed, view=AppealReviewView())
+        
+        # Confirm to user
+        await interaction.followup.send("✅ Your ban appeal has been submitted! We will review it and get back to you soon.")
 
 
 # ── Events ─────────────────────────────────────────────────────────────────────
@@ -367,8 +514,24 @@ async def on_message(message):
                     await target_channel.send(
                         f"{punished_user.mention} now has **{current_points} {point_word}**."
                     )
+                    
+                    # If it's a ban, DM the user the appeal form
+                    if matched_punishment[0] == "ban":
+                        try:
+                            await punished_user.send("You have been banned. Please fill out the ban appeal form below:", view=AppealFormView())
+                        except:
+                            print(f"[APPEAL] Could not DM ban appeal form to {user_id}")
 
     await bot.process_commands(message)
+
+
+class AppealFormView(discord.ui.View):
+    def __init__(self):
+        super().__init__()
+    
+    @discord.ui.button(label="Submit Appeal", style=discord.ButtonStyle.primary)
+    async def submit_appeal(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(BanAppealModal())
 
 
 # ── Commands ───────────────────────────────────────────────────────────────────
@@ -446,6 +609,36 @@ async def sampleremind(ctx):
         avatar_url=avatar,
     )
     await ctx.send(embed=embed)
+
+
+@bot.command()
+@commands.has_permissions(manage_guild=True)
+async def sampleappeal(ctx):
+    """Send a sample ban appeal to preview the format."""
+    embed = build_appeal_review_embed(
+        discord_username="SampleUser#1234",
+        discord_id="123456789012345678",
+        avatar_url="https://cdn.discordapp.com/embed/avatars/0.png",
+        appeal_id="123456789012345678_1234567890",
+        ban_reason="Spamming and harassment",
+        time_since_ban="2 weeks",
+        why_unban="I've learned my lesson and won't break rules again",
+        extra_info="I was having a bad day but that's no excuse."
+    )
+    
+    class SampleAppealView(discord.ui.View):
+        def __init__(self):
+            super().__init__()
+        
+        @discord.ui.button(label="✅ Approve", style=discord.ButtonStyle.green, disabled=True)
+        async def approve_sample(self, interaction: discord.Interaction, button: discord.ui.Button):
+            pass
+        
+        @discord.ui.button(label="❌ Deny", style=discord.ButtonStyle.red, disabled=True)
+        async def deny_sample(self, interaction: discord.Interaction, button: discord.ui.Button):
+            pass
+    
+    await ctx.send(embed=embed, view=SampleAppealView())
 
 
 async def healthz(request):
