@@ -1,9 +1,9 @@
 [build]
 builder = "nixpacks"
-nixpkgsVersion = "nixpkgs-23.11"
 
 [build.nixpacks]
 python = "3.11"
+pythonDependencies = ["pip"]
 
 [deploy]
 startCommand = "python main.py"
