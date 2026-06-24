@@ -14,6 +14,7 @@ intents.message_content = True
 intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
+bot.synced = False
 
 # ── Config ─────────────────────────────────────────────────────────────────────
 
@@ -39,6 +40,9 @@ VOID_ROLES = {
 
 POINT_THRESHOLD  = 10
 REMINDER_CHANNEL = "awaiting-bans"
+WELCOME_CHANNEL_ID = 1517684680005124136
+DASHBOARD_CHANNEL_ID = 1517682110842798192
+GUILD_ID = 1517672283513294868
 
 LOGO_PATH   = os.path.join(os.path.dirname(__file__), "logo.png")
 EMBED_COLOR = 0x01D3FF
@@ -48,7 +52,6 @@ CASES_FILE  = os.path.join(os.path.dirname(__file__), "cases.json")
 
 last_command_channel: dict[str, int] = {}
 processed_cases: set[str] = set()
-# Track message IDs already handled to prevent double-processing
 processed_message_ids: set[int] = set()
 
 # ── Data helpers ───────────────────────────────────────────────────────────────
@@ -121,6 +124,15 @@ def get_latest_case(user_id: str) -> dict | None:
     return {**user_cases[latest_key], "case_number": latest_key}
 
 
+def get_ordinal(n: int) -> str:
+    """Convert number to ordinal (1st, 2nd, 3rd, etc.)"""
+    if 10 <= n % 100 <= 20:
+        suffix = 'th'
+    else:
+        suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')
+    return f"{n}{suffix}"
+
+
 async def get_roblox_info(username: str) -> tuple[str, str]:
     """Returns (roblox_id, roblox_url). Falls back to ('Unknown', 'N/A') on failure."""
     try:
@@ -181,7 +193,7 @@ def build_alert_embed(
     return embed
 
 
-# ── Daily reminder — runs at midnight UTC, NOT on startup ─────────────────────
+# ── Daily reminder — runs at midnight UTC ─────────────────────────────────────
 
 @tasks.loop(time=datetime.time(hour=0, minute=0, tzinfo=datetime.timezone.utc))
 async def daily_reminder():
@@ -227,12 +239,56 @@ async def before_reminder():
     await bot.wait_until_ready()
 
 
+# ── Welcome message on member join ─────────────────────────────────────────────
+
+@bot.event
+async def on_member_join(member: discord.Member):
+    guild = member.guild
+    
+    # Only send welcome in the specified guild
+    if guild.id != GUILD_ID:
+        return
+    
+    welcome_channel = guild.get_channel(WELCOME_CHANNEL_ID)
+    if not welcome_channel:
+        print(f"[WELCOME] Channel {WELCOME_CHANNEL_ID} not found")
+        return
+    
+    # Count total members (excluding bots)
+    member_count = sum(1 for m in guild.members if not m.bot)
+    ordinal = get_ordinal(member_count)
+    
+    # Create embed
+    embed = discord.Embed(
+        description=f"Welcome {member.mention} to <:OSRP:1517680995678027957> Oklahoma State Roleplay, you are our **{ordinal} member**",
+        color=EMBED_COLOR,
+    )
+    
+    # Create button linking to dashboard
+    class DashboardButton(discord.ui.View):
+        def __init__(self):
+            super().__init__()
+            self.add_item(discord.ui.Button(
+                label="Dashboard",
+                url=f"https://discord.com/channels/{GUILD_ID}/{DASHBOARD_CHANNEL_ID}",
+                style=discord.ButtonStyle.link
+            ))
+    
+    await welcome_channel.send(embed=embed, view=DashboardButton())
+
+
 # ── Events ─────────────────────────────────────────────────────────────────────
 
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user} (ID: {bot.user.id})")
-    print("Moderation points bot is ready!")
+    print("OSRP Management bot is ready!")
+    
+    # Sync commands once
+    if not bot.synced:
+        await bot.tree.sync()
+        bot.synced = True
+    
     daily_reminder.start()
 
 
@@ -242,11 +298,10 @@ async def on_message(message):
     if message.author.id == bot.user.id:
         return
 
-    # Deduplicate — Discord can fire on_message more than once for the same message
+    # Deduplicate
     if message.id in processed_message_ids:
         return
     processed_message_ids.add(message.id)
-    # Keep the set from growing unbounded
     if len(processed_message_ids) > 1000:
         processed_message_ids.clear()
 
@@ -410,7 +465,7 @@ async def start_health_server():
 
 async def main():
     async with bot:
-        # Only start the HTTP health server in production (PORT is injected by Replit)
+        # Only start the HTTP health server in production (PORT is injected by Railway)
         if "PORT" in os.environ:
             await start_health_server()
         await bot.start(TOKEN)
