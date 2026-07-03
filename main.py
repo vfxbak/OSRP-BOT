@@ -1413,6 +1413,252 @@ async def handle_appeal_page(request):
     return web.Response(text=APPEAL_HTML, content_type="text/html")
 
 
+# â”€â”€ Dashboard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+DASHBOARD_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OSRP Appeal Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+            color: #c9d1d9;
+            min-height: 100vh; padding: 20px;
+        }
+        .container { max-width: 800px; margin: 0 auto; background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 40px; }
+        h1 { color: #01d3ff; margin-bottom: 8px; font-size: 24px; }
+        .subtitle { color: #8b949e; margin-bottom: 24px; font-size: 14px; }
+        .section { background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+        .section h2 { color: #01d3ff; font-size: 18px; margin-bottom: 16px; }
+        label { font-size: 13px; font-weight: 600; color: #c9d1d9; display: block; margin-bottom: 4px; }
+        input, select { background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 10px 14px; color: #c9d1d9; font-size: 14px; width: 100%; margin-bottom: 12px; }
+        input:focus { outline: none; border-color: #01d3ff; }
+        button { background: #01d3ff; color: #0d1117; border: none; border-radius: 6px; padding: 10px 20px; font-size: 14px; font-weight: 700; cursor: pointer; }
+        button:hover { background: #00b8e6; }
+        button.danger { background: #f85149; }
+        button.danger:hover { background: #da3633; }
+        button.secondary { background: #30363d; color: #c9d1d9; }
+        button.secondary:hover { background: #484f58; }
+        .error { color: #f85149; font-size: 13px; margin-top: 4px; }
+        .success { color: #3fb950; font-size: 13px; margin-top: 4px; }
+        .hidden { display: none; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #30363d; }
+        th { color: #8b949e; font-weight: 600; }
+        .login-box { max-width: 400px; margin: 40px auto; text-align: center; }
+        .stats { display: flex; gap: 16px; margin-bottom: 20px; }
+        .stat-card { background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 16px; flex: 1; text-align: center; }
+        .stat-card .num { font-size: 28px; font-weight: 700; color: #01d3ff; }
+        .stat-card .label { font-size: 11px; color: #8b949e; text-transform: uppercase; margin-top: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container" id="login-page">
+        <h1>OSRP Appeal Dashboard</h1>
+        <p class="subtitle">Staff Panel - Manage Ban Appeals</p>
+        <div class="login-box section">
+            <h2>Login</h2>
+            <input type="password" id="login-key" placeholder="Enter dashboard key">
+            <button id="login-btn" style="width:100%;">Login</button>
+            <div id="login-error" class="error hidden" style="margin-top:12px;"></div>
+        </div>
+    </div>
+
+    <div class="container hidden" id="dashboard-page">
+        <h1>OSRP Appeal Dashboard</h1>
+        <p class="subtitle">Staff Panel - Manage Ban Appeals</p>
+        <button id="logout-btn" class="secondary" style="float:right;margin-top:-48px;">Logout</button>
+        
+        <div class="stats" id="stats"></div>
+        
+        <div class="section">
+            <h2>Blacklist User</h2>
+            <label>Discord User ID</label>
+            <input type="text" id="blacklist-user-id" placeholder="Enter Discord user ID">
+            <button id="blacklist-add-btn">Add to Blacklist</button>
+            <div id="blacklist-add-result"></div>
+        </div>
+        
+        <div class="section">
+            <h2>Blacklisted Users</h2>
+            <div id="blacklist-table"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = () => localStorage.getItem('dashboard_key');
+        
+        document.getElementById('login-btn').addEventListener('click', function() {
+            const key = document.getElementById('login-key').value.trim();
+            if (!key) return;
+            localStorage.setItem('dashboard_key', key);
+            loadDashboard();
+        });
+        
+        document.getElementById('login-key').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') document.getElementById('login-btn').click();
+        });
+        
+        document.getElementById('logout-btn').addEventListener('click', function() {
+            localStorage.removeItem('dashboard_key');
+            document.getElementById('login-page').classList.remove('hidden');
+            document.getElementById('dashboard-page').classList.add('hidden');
+        });
+        
+        function showError(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.classList.remove('hidden'); setTimeout(() => el.classList.add('hidden'), 3000); }
+        function showSuccess(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.style.color = '#3fb950'; el.classList.remove('hidden'); setTimeout(() => el.classList.add('hidden'), 3000); }
+        
+        async function apiFetch(path, options = {}) {
+            const key = API_KEY();
+            const headers = { 'Content-Type': 'application/json', 'X-Admin-Key': key };
+            const res = await fetch(path, { ...options, headers });
+            if (res.status === 401) {
+                localStorage.removeItem('dashboard_key');
+                document.getElementById('login-page').classList.remove('hidden');
+                document.getElementById('dashboard-page').classList.add('hidden');
+                return null;
+            }
+            return res.json();
+        }
+        
+        async function loadDashboard() {
+            const data = await apiFetch('/api/dashboard/data');
+            if (!data) return;
+            
+            if (data.error) {
+                document.getElementById('login-error').textContent = data.error;
+                document.getElementById('login-error').classList.remove('hidden');
+                localStorage.removeItem('dashboard_key');
+                return;
+            }
+            
+            document.getElementById('login-page').classList.add('hidden');
+            document.getElementById('dashboard-page').classList.remove('hidden');
+            
+            document.getElementById('stats').innerHTML = `
+                <div class="stat-card"><div class="num">${data.total_appeals}</div><div class="label">Total Appeals</div></div>
+                <div class="stat-card"><div class="num">${data.pending_appeals}</div><div class="label">Pending</div></div>
+                <div class="stat-card"><div class="num">${data.blacklist_count}</div><div class="label">Blacklisted</div></div>
+            `;
+            
+            loadBlacklist();
+        }
+        
+        async function loadBlacklist() {
+            const data = await apiFetch('/api/dashboard/blacklist');
+            if (!data) return;
+            const table = document.getElementById('blacklist-table');
+            if (data.users.length === 0) {
+                table.innerHTML = '<p style="color:#8b949e;">No blacklisted users.</p>';
+                return;
+            }
+            let html = '<table><tr><th>User ID</th><th>Added By</th><th>Date Added</th><th>Action</th></tr>';
+            data.users.forEach(u => {
+                html += `<tr><td><code>${u.user_id}</code></td><td><code>${u.added_by}</code></td><td>${u.added_at}</td><td><button class="danger" onclick="removeBlacklist('${u.user_id}')">Remove</button></td></tr>`;
+            });
+            html += '</table>';
+            table.innerHTML = html;
+        }
+        
+        async function removeBlacklist(userId) {
+            const data = await apiFetch('/api/dashboard/blacklist/remove', { method: 'POST', body: JSON.stringify({ user_id: userId }) });
+            if (data && data.success) loadBlacklist();
+        }
+        
+        document.getElementById('blacklist-add-btn').addEventListener('click', async function() {
+            const userId = document.getElementById('blacklist-user-id').value.trim();
+            if (!userId) return;
+            const data = await apiFetch('/api/dashboard/blacklist/add', { method: 'POST', body: JSON.stringify({ user_id: userId }) });
+            if (data && data.success) {
+                document.getElementById('blacklist-user-id').value = '';
+                loadBlacklist();
+                showSuccess('blacklist-add-result', 'User blacklisted successfully.');
+            } else if (data && data.error) {
+                showError('blacklist-add-result', data.error);
+            }
+        });
+        
+        document.getElementById('blacklist-user-id').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') document.getElementById('blacklist-add-btn').click();
+        });
+        
+        // Auto-login if key exists
+        if (localStorage.getItem('dashboard_key')) loadDashboard();
+    </script>
+</body>
+</html>"""
+
+async def handle_dashboard_page(request):
+    return web.Response(text=DASHBOARD_HTML, content_type="text/html")
+
+
+async def handle_dashboard_data(request):
+    key = request.headers.get("X-Admin-Key", "")
+    if key != os.environ.get("DASHBOARD_KEY", ""):
+        return web.json_response({"error": "Invalid key"}, status=401)
+    
+    total = len(appeals_db)
+    pending = len([a for a in appeals_db.values() if a.get("status") == "pending"])
+    blacklist_count = len(blacklist_db)
+    
+    return web.json_response({
+        "total_appeals": total,
+        "pending_appeals": pending,
+        "blacklist_count": blacklist_count
+    })
+
+
+async def handle_dashboard_blacklist(request):
+    key = request.headers.get("X-Admin-Key", "")
+    if key != os.environ.get("DASHBOARD_KEY", ""):
+        return web.json_response({"error": "Invalid key"}, status=401)
+    
+    users = [{"user_id": uid, "added_by": d.get("added_by", ""), "added_at": d.get("added_at", "")} for uid, d in blacklist_db.items()]
+    return web.json_response({"users": users})
+
+
+async def handle_dashboard_blacklist_add(request):
+    key = request.headers.get("X-Admin-Key", "")
+    if key != os.environ.get("DASHBOARD_KEY", ""):
+        return web.json_response({"error": "Invalid key"}, status=401)
+    
+    try:
+        body = await request.json()
+        user_id = body.get("user_id", "").strip()
+        if not user_id:
+            return web.json_response({"error": "User ID required"}, status=400)
+        
+        blacklist_db[user_id] = {
+            "added_by": "dashboard",
+            "added_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
+        }
+        save_json(BLACKLIST_FILE, blacklist_db)
+        return web.json_response({"success": True})
+    except:
+        return web.json_response({"error": "Invalid request"}, status=400)
+
+
+async def handle_dashboard_blacklist_remove(request):
+    key = request.headers.get("X-Admin-Key", "")
+    if key != os.environ.get("DASHBOARD_KEY", ""):
+        return web.json_response({"error": "Invalid key"}, status=401)
+    
+    try:
+        body = await request.json()
+        user_id = body.get("user_id", "").strip()
+        if user_id in blacklist_db:
+            del blacklist_db[user_id]
+            save_json(BLACKLIST_FILE, blacklist_db)
+            return web.json_response({"success": True})
+        return web.json_response({"error": "User not found"}, status=404)
+    except:
+        return web.json_response({"error": "Invalid request"}, status=400)
+
+
 async def start_web_server():
     app = web.Application()
     
@@ -1420,6 +1666,13 @@ async def start_web_server():
     app.router.add_get("/appeal", handle_appeal_page)
     app.router.add_get("/api/appeal/info", handle_appeal_info)
     app.router.add_post("/api/appeal/submit", handle_appeal_submit)
+    
+    # Dashboard
+    app.router.add_get("/dashboard", handle_dashboard_page)
+    app.router.add_get("/api/dashboard/data", handle_dashboard_data)
+    app.router.add_get("/api/dashboard/blacklist", handle_dashboard_blacklist)
+    app.router.add_post("/api/dashboard/blacklist/add", handle_dashboard_blacklist_add)
+    app.router.add_post("/api/dashboard/blacklist/remove", handle_dashboard_blacklist_remove)
     
     # Health check
     async def healthz(request):
