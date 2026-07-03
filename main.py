@@ -61,7 +61,7 @@ INGAME_MODERATING_ROLE_ID = 1520870451923124415
 
 GUILD_ID = 1517672283513294868
 
-BASE_URL = os.getenv("BASE_URL", "https://osrp-bot.railway.app")
+BASE_URL = os.getenv("BASE_URL", "https://osrp-bot-production.up.railway.app")
 
 EMBED_COLOR = 0x01D3FF
 
