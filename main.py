@@ -1041,7 +1041,7 @@ APPEAL_HTML = """<!DOCTYPE html>
                 document.getElementById('discord_id').value = data.discord_id;
                 
                 if (data.cooldown_active) {
-                    document.getElementById('cooldown-box').textContent = 'â³ You are currently on cooldown. You can submit an appeal ' + data.cooldown_ends + '. Please wait until the cooldown has passed.';
+                    document.getElementById('cooldown-box').textContent = 'You are currently on cooldown. You can submit an appeal after ' + data.cooldown_ends + '. Please wait until the cooldown has passed.';
                     document.getElementById('cooldown-box').classList.remove('hidden');
                     document.getElementById('submit-btn').disabled = true;
                 } else {
@@ -1077,7 +1077,7 @@ APPEAL_HTML = """<!DOCTYPE html>
             .then(response => {
                 if (response.success) {
                     document.getElementById('appeal-form').classList.add('hidden');
-                    document.getElementById('success-box').textContent = 'âœ… Your ban appeal has been submitted successfully! Staff will review it and you will be notified via Discord. Your appeal ID is: ' + response.appeal_id;
+                    document.getElementById('success-box').textContent = 'Your ban appeal has been submitted successfully! Staff will review it and you will be notified via Discord. Your appeal ID is: ' + response.appeal_id;
                     document.getElementById('success-box').classList.remove('hidden');
                 } else {
                     document.getElementById('error-box').textContent = response.error || 'Submission failed. Please try again.';
