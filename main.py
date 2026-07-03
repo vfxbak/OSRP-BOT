@@ -24,9 +24,11 @@ POINTS = {
     "warn": 1,
     "mute": 2,
     "softban": 2,
+    "kick": 2,
     "temp ban": 4,
     "tempban": 4,
     "temp banned": 4,
+    "banned": 4,
     "ban": 4
 }
 
@@ -331,13 +333,19 @@ def build_appeal_review_embed(
     embed.add_field(name="Discord ID", value=discord_id, inline=True)
     embed.add_field(name="\u200b", value="\u200b", inline=True)
     
-    embed.add_field(name="Why were you banned? Why do you deserve to be unbanned?", 
-                    value=appeal_data.get("ban_reason", "N/A"), inline=False)
+    embed.add_field(name="Why were you banned?", 
+                    value=appeal_data.get("why_banned", appeal_data.get("ban_reason", "N/A")), inline=False)
+    embed.add_field(name="Why do you deserve to be unbanned?", 
+                    value=appeal_data.get("why_unban", "N/A"), inline=False)
     embed.add_field(name="Time Since Ban", value=appeal_data.get("time_since_ban", "N/A"), inline=False)
     
     if appeal_data.get("extra_info"):
         embed.add_field(name="Do you have any extra information to provide?", 
                         value=appeal_data.get("extra_info"), inline=False)
+    
+    why_banned = appeal_data.get("why_banned", appeal_data.get("ban_reason", ""))
+    if why_banned:
+        embed.add_field(name="\u200b", value=f"<:alert:1522684494119960586> **THIS USER WAS BANNED FOR:** {why_banned}", inline=False)
     
     embed.set_footer(text=f"Appeal ID: {appeal_data.get('appeal_id', 'N/A')}")
     return embed
@@ -507,9 +515,15 @@ class BanAppealModal(discord.ui.Modal, title="Ban Appeal Form"):
             default=f"{user.id}",
             required=True,
         )
-        self.ban_reason = discord.ui.TextInput(
-            label="Why were you banned? Why do you deserve to be unbanned?",
-            placeholder="Explain why you were banned and why you should be unbanned...",
+        self.why_banned = discord.ui.TextInput(
+            label="Why were you banned?",
+            placeholder="Explain what you were banned for...",
+            required=True,
+            style=discord.TextStyle.paragraph
+        )
+        self.why_unban = discord.ui.TextInput(
+            label="Why do you deserve to be unbanned?",
+            placeholder="Explain why you should be unbanned...",
             required=True,
             style=discord.TextStyle.paragraph
         )
@@ -524,7 +538,7 @@ class BanAppealModal(discord.ui.Modal, title="Ban Appeal Form"):
             required=False,
             style=discord.TextStyle.paragraph
         )
-        super().__init__(items=[self.discord_username, self.discord_id, self.ban_reason, self.time_since_ban, self.extra_info])
+        super().__init__(items=[self.discord_username, self.discord_id, self.why_banned, self.why_unban, self.time_since_ban, self.extra_info])
 
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer()
@@ -537,12 +551,13 @@ class BanAppealModal(discord.ui.Modal, title="Ban Appeal Form"):
             await interaction.followup.send("âŒ This appeal form is not for your account.", ephemeral=True)
             return
         
-        # Store appeal data
         appeals_db[appeal_id] = {
             "user_id": str(user_id),
             "discord_username": self.discord_username.value,
             "discord_id": self.discord_id.value,
-            "ban_reason": self.ban_reason.value,
+            "why_banned": self.why_banned.value,
+            "why_unban": self.why_unban.value,
+            "ban_reason": self.why_banned.value,
             "time_since_ban": self.time_since_ban.value,
             "extra_info": self.extra_info.value,
             "submitted_at": datetime.datetime.now().isoformat(),
@@ -568,7 +583,9 @@ class BanAppealModal(discord.ui.Modal, title="Ban Appeal Form"):
             discord_id=self.discord_id.value,
             avatar_url=str(interaction.user.display_avatar.url),
             appeal_id=appeal_id,
-            ban_reason=self.ban_reason.value,
+            why_banned=self.why_banned.value,
+            why_unban=self.why_unban.value,
+            ban_reason=self.why_banned.value,
             time_since_ban=self.time_since_ban.value,
             extra_info=self.extra_info.value,
         )
@@ -579,7 +596,7 @@ class BanAppealModal(discord.ui.Modal, title="Ban Appeal Form"):
             
             @discord.ui.button(label="Approve", style=discord.ButtonStyle.green)
             async def approve_button(self, button_interaction: discord.Interaction, button: discord.ui.Button):
-                if not has_any_role(button_interaction.user, APPEAL_REVIEW_ROLES):
+                if not has_any_role(button_interaction.user, APPEAL_REVIEW_ROLES) and not has_staff_role(button_interaction.user):
                     await button_interaction.response.send_message("âŒ You don't have permission to approve appeals.", ephemeral=True)
                     return
                 
@@ -599,7 +616,7 @@ class BanAppealModal(discord.ui.Modal, title="Ban Appeal Form"):
             
             @discord.ui.button(label="Deny", style=discord.ButtonStyle.red)
             async def deny_button(self, button_interaction: discord.Interaction, button: discord.ui.Button):
-                if not has_any_role(button_interaction.user, APPEAL_REVIEW_ROLES):
+                if not has_any_role(button_interaction.user, APPEAL_REVIEW_ROLES) and not has_staff_role(button_interaction.user):
                     await button_interaction.response.send_message("âŒ You don't have permission to deny appeals.", ephemeral=True)
                     return
                 
@@ -1006,8 +1023,12 @@ APPEAL_HTML = """<!DOCTYPE html>
                 <input type="text" id="discord_id" disabled>
             </div>
             <div>
-                <label for="ban_reason">Why were you banned? Why do you deserve to be unbanned?</label>
-                <textarea id="ban_reason" required></textarea>
+                <label for="why_banned">Why were you banned?</label>
+                <textarea id="why_banned" required></textarea>
+            </div>
+            <div>
+                <label for="why_unban">Why do you deserve to be unbanned?</label>
+                <textarea id="why_unban" required></textarea>
             </div>
             <div>
                 <label for="time_since_ban">Time Since Ban</label>
@@ -1098,7 +1119,9 @@ APPEAL_HTML = """<!DOCTYPE html>
                 token: currentToken,
                 discord_username: document.getElementById('discord_username').value,
                 discord_id: document.getElementById('discord_id').value,
-                ban_reason: document.getElementById('ban_reason').value,
+                why_banned: document.getElementById('why_banned').value,
+                why_unban: document.getElementById('why_unban').value,
+                ban_reason: document.getElementById('why_banned').value,
                 time_since_ban: document.getElementById('time_since_ban').value,
                 extra_info: document.getElementById('extra_info').value
             };
@@ -1177,13 +1200,15 @@ async def handle_appeal_submit(request):
         return web.json_response({"error": "Invalid JSON body."}, status=400)
     
     token = body.get("token", "")
-    ban_reason = body.get("ban_reason", "").strip()
+    why_banned = body.get("why_banned", "").strip()
+    why_unban = body.get("why_unban", "").strip()
+    ban_reason = body.get("ban_reason", why_banned).strip()
     time_since_ban = body.get("time_since_ban", "").strip()
     extra_info = body.get("extra_info", "").strip()
     discord_username = body.get("discord_username", "").strip()
     discord_id = body.get("discord_id", "").strip()
     
-    if not token or not ban_reason or not time_since_ban:
+    if not token or not why_banned or not time_since_ban:
         return web.json_response({"error": "Required fields missing."}, status=400)
     
     token_data = appeal_tokens_db.get(token)
@@ -1216,6 +1241,8 @@ async def handle_appeal_submit(request):
         "user_id": user_id,
         "discord_username": discord_username,
         "discord_id": discord_id,
+        "why_banned": why_banned,
+        "why_unban": why_unban,
         "ban_reason": ban_reason,
         "time_since_ban": time_since_ban,
         "extra_info": extra_info,
@@ -1243,6 +1270,8 @@ async def handle_appeal_submit(request):
                 discord_id=discord_id,
                 avatar_url=avatar_url,
                 appeal_id=appeal_id,
+                why_banned=why_banned,
+                why_unban=why_unban,
                 ban_reason=ban_reason,
                 time_since_ban=time_since_ban,
                 extra_info=extra_info,
@@ -1254,7 +1283,7 @@ async def handle_appeal_submit(request):
                 
                 @discord.ui.button(label="Approve", style=discord.ButtonStyle.green)
                 async def approve_button(self, button_interaction: discord.Interaction, button: discord.ui.Button):
-                    if not has_any_role(button_interaction.user, APPEAL_REVIEW_ROLES):
+                    if not has_any_role(button_interaction.user, APPEAL_REVIEW_ROLES) and not has_staff_role(button_interaction.user):
                         await button_interaction.response.send_message("âŒ You don't have permission to approve appeals.", ephemeral=True)
                         return
                     
@@ -1278,7 +1307,7 @@ async def handle_appeal_submit(request):
                 
                 @discord.ui.button(label="Deny", style=discord.ButtonStyle.red)
                 async def deny_button(self, button_interaction: discord.Interaction, button: discord.ui.Button):
-                    if not has_any_role(button_interaction.user, APPEAL_REVIEW_ROLES):
+                    if not has_any_role(button_interaction.user, APPEAL_REVIEW_ROLES) and not has_staff_role(button_interaction.user):
                         await button_interaction.response.send_message("âŒ You don't have permission to deny appeals.", ephemeral=True)
                         return
                     
