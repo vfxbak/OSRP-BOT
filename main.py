@@ -822,10 +822,10 @@ async def handle_ban_appeal_dm(user_id, punishment_type: str, total_points: int)
         await user.send(
             f"You have been {punishment_type} from **Oklahoma State Roleplay**.\n\n"
             f"You currently have **{total_points} points** (threshold: {POINT_THRESHOLD}).\n\n"
-            f"**Note:** You can only submit a ban appeal **{APPEAL_COOLDOWN_DAYS} days** after your ban.\n"
-            f"Once the cooldown has passed, go to {BASE_URL}/appeal and enter your unique appeal code.\n\n"
-            f"**Your Appeal Code:** `{token}`\n\n"
-            f"*This code is unique to you â€” do not share it.*"
+            f"You can only submit a ban appeal **{APPEAL_COOLDOWN_DAYS} days** after your ban.\n"
+            f"Once the cooldown has passed, go to {BASE_URL}/appeal and enter this code to submit your appeal.\n\n"
+            f"**Your ban appeal code:** `{token}`\n\n"
+            f"This code is unique to you, do **not** share it or you risk being **__permanently banned without an appeal!__**"
         )
         print(f"[APPEAL] DM sent to {user_id} with appeal token {token}")
     except discord.Forbidden:
