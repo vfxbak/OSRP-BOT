@@ -594,10 +594,41 @@ class BanAppealModal(discord.ui.Modal, title="Ban Appeal Form"):
             def __init__(self):
                 super().__init__()
             
+            async def send_approve_dm(self, user_id, guild):
+                try:
+                    user = await bot.fetch_user(int(user_id))
+                    invite = None
+                    welcome_ch = guild.get_channel(WELCOME_CHANNEL_ID)
+                    if welcome_ch:
+                        try:
+                            invite = await welcome_ch.create_invite(max_uses=1, max_age=86400)
+                        except:
+                            pass
+                    
+                    msg = f"Your ban appeal has been reviewed and has been **approved**. You have been unbanned from **{guild.name}**."
+                    if invite:
+                        msg += f"\n\nHere is an invite to rejoin the server: {invite.url}\n\n*This invite expires in 24 hours.*"
+                    await user.send(msg)
+                except:
+                    pass
+            
+            async def send_deny_dm(self, user_id, guild):
+                try:
+                    user = await bot.fetch_user(int(user_id))
+                    three_months = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=90)).strftime("%B %d, %Y")
+                    await user.send(
+                        f"Your ban appeal for **{guild.name}** has been reviewed and unfortunately has been **denied**.\n\n"
+                        f"You may submit another appeal after **{three_months}** (3 months from today).\n\n"
+                        f"If you believe this decision was made in error, please contact server management through other means.\n\n"
+                        f"We appreciate your understanding."
+                    )
+                except:
+                    pass
+            
             @discord.ui.button(label="Approve", style=discord.ButtonStyle.green)
             async def approve_button(self, button_interaction: discord.Interaction, button: discord.ui.Button):
                 if not has_any_role(button_interaction.user, APPEAL_REVIEW_ROLES) and not has_staff_role(button_interaction.user):
-                    await button_interaction.response.send_message("âŒ You don't have permission to approve appeals.", ephemeral=True)
+                    await button_interaction.response.send_message("You don't have permission to approve appeals.", ephemeral=True)
                     return
                 
                 appeals_db[appeal_id]["status"] = "approved"
@@ -605,9 +636,10 @@ class BanAppealModal(discord.ui.Modal, title="Ban Appeal Form"):
                 
                 try:
                     await guild.unban(discord.Object(int(user_id)), reason=f"Ban appeal approved - {button_interaction.user.name}")
-                    await interaction.user.send(f"âœ… Your ban appeal has been **APPROVED**! You have been unbanned from {guild.name}.")
                 except Exception as e:
                     print(f"[APPEAL] Failed to unban {user_id}: {e}")
+                
+                await self.send_approve_dm(user_id, guild)
                 
                 embed.color = discord.Color.green()
                 embed.description = "**__Ban Appeal - APPROVED__**"
@@ -617,16 +649,13 @@ class BanAppealModal(discord.ui.Modal, title="Ban Appeal Form"):
             @discord.ui.button(label="Deny", style=discord.ButtonStyle.red)
             async def deny_button(self, button_interaction: discord.Interaction, button: discord.ui.Button):
                 if not has_any_role(button_interaction.user, APPEAL_REVIEW_ROLES) and not has_staff_role(button_interaction.user):
-                    await button_interaction.response.send_message("âŒ You don't have permission to deny appeals.", ephemeral=True)
+                    await button_interaction.response.send_message("You don't have permission to deny appeals.", ephemeral=True)
                     return
                 
                 appeals_db[appeal_id]["status"] = "denied"
                 save_json(APPEALS_FILE, appeals_db)
                 
-                try:
-                    await interaction.user.send(f"âŒ Your ban appeal has been **DENIED**. You can re-appeal after 3 months.")
-                except:
-                    pass
+                await self.send_deny_dm(user_id, guild)
                 
                 embed.color = discord.Color.red()
                 embed.description = "**__Ban Appeal - DENIED__**"
@@ -1281,10 +1310,41 @@ async def handle_appeal_submit(request):
                 def __init__(self):
                     super().__init__()
                 
+                async def send_approve_dm(self, user_id, guild_obj):
+                    try:
+                        user = await bot.fetch_user(int(user_id))
+                        invite = None
+                        welcome_ch = guild_obj.get_channel(WELCOME_CHANNEL_ID)
+                        if welcome_ch:
+                            try:
+                                invite = await welcome_ch.create_invite(max_uses=1, max_age=86400)
+                            except:
+                                pass
+                        
+                        msg = f"Your ban appeal has been reviewed and has been **approved**. You have been unbanned from **{guild_obj.name}**."
+                        if invite:
+                            msg += f"\n\nHere is an invite to rejoin the server: {invite.url}\n\n*This invite expires in 24 hours.*"
+                        await user.send(msg)
+                    except:
+                        pass
+                
+                async def send_deny_dm(self, user_id, guild_obj):
+                    try:
+                        user = await bot.fetch_user(int(user_id))
+                        three_months = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=90)).strftime("%B %d, %Y")
+                        await user.send(
+                            f"Your ban appeal for **{guild_obj.name}** has been reviewed and unfortunately has been **denied**.\n\n"
+                            f"You may submit another appeal after **{three_months}** (3 months from today).\n\n"
+                            f"If you believe this decision was made in error, please contact server management through other means.\n\n"
+                            f"We appreciate your understanding."
+                        )
+                    except:
+                        pass
+                
                 @discord.ui.button(label="Approve", style=discord.ButtonStyle.green)
                 async def approve_button(self, button_interaction: discord.Interaction, button: discord.ui.Button):
                     if not has_any_role(button_interaction.user, APPEAL_REVIEW_ROLES) and not has_staff_role(button_interaction.user):
-                        await button_interaction.response.send_message("âŒ You don't have permission to approve appeals.", ephemeral=True)
+                        await button_interaction.response.send_message("You don't have permission to approve appeals.", ephemeral=True)
                         return
                     
                     appeals_db[appeal_id]["status"] = "approved"
@@ -1292,13 +1352,10 @@ async def handle_appeal_submit(request):
                     
                     try:
                         await guild.unban(discord.Object(int(user_id)), reason=f"Ban appeal approved - {button_interaction.user.name}")
-                        try:
-                            user = await bot.fetch_user(int(user_id))
-                            await user.send(f"âœ… Your ban appeal has been **APPROVED**! You have been unbanned from {guild.name}.")
-                        except:
-                            pass
                     except Exception as e:
                         print(f"[APPEAL] Failed to unban {user_id}: {e}")
+                    
+                    await self.send_approve_dm(user_id, guild)
                     
                     embed.color = discord.Color.green()
                     embed.description = "**__Ban Appeal - APPROVED__**"
@@ -1308,17 +1365,13 @@ async def handle_appeal_submit(request):
                 @discord.ui.button(label="Deny", style=discord.ButtonStyle.red)
                 async def deny_button(self, button_interaction: discord.Interaction, button: discord.ui.Button):
                     if not has_any_role(button_interaction.user, APPEAL_REVIEW_ROLES) and not has_staff_role(button_interaction.user):
-                        await button_interaction.response.send_message("âŒ You don't have permission to deny appeals.", ephemeral=True)
+                        await button_interaction.response.send_message("You don't have permission to deny appeals.", ephemeral=True)
                         return
                     
                     appeals_db[appeal_id]["status"] = "denied"
                     save_json(APPEALS_FILE, appeals_db)
                     
-                    try:
-                        user = await bot.fetch_user(int(user_id))
-                        await user.send(f"âŒ Your ban appeal has been **DENIED**. You can re-appeal after 3 months.")
-                    except:
-                        pass
+                    await self.send_deny_dm(user_id, guild)
                     
                     embed.color = discord.Color.red()
                     embed.description = "**__Ban Appeal - DENIED__**"
@@ -1472,6 +1525,38 @@ async def sampleappeal(ctx):
         await ctx.send(f"Test appeal code sent to your DMs! Check your DMs.")
     except:
         await ctx.send(f"Could not DM you. Your code is: **`{token}`**\n\nGo to {BASE_URL}/appeal and enter it.")
+
+
+@bot.command()
+@commands.has_permissions(manage_guild=True)
+async def sampleapprove(ctx):
+    """Preview the approve DM message."""
+    guild = ctx.guild
+    invite = None
+    welcome_ch = guild.get_channel(WELCOME_CHANNEL_ID)
+    if welcome_ch:
+        try:
+            invite = await welcome_ch.create_invite(max_uses=1, max_age=86400)
+        except:
+            pass
+    msg = f"Your ban appeal has been reviewed and has been **approved**. You have been unbanned from **{guild.name}**."
+    if invite:
+        msg += f"\n\nHere is an invite to rejoin the server: {invite.url}\n\n*This invite expires in 24 hours.*"
+    await ctx.send(f"**Preview of approve DM:**\n{msg}")
+
+
+@bot.command()
+@commands.has_permissions(manage_guild=True)
+async def sampledeny(ctx):
+    """Preview the deny DM message."""
+    three_months = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=90)).strftime("%B %d, %Y")
+    msg = (
+        f"Your ban appeal for **{ctx.guild.name}** has been reviewed and unfortunately has been **denied**.\n\n"
+        f"You may submit another appeal after **{three_months}** (3 months from today).\n\n"
+        f"If you believe this decision was made in error, please contact server management through other means.\n\n"
+        f"We appreciate your understanding."
+    )
+    await ctx.send(f"**Preview of deny DM:**\n{msg}")
 
 
 @bot.command()
