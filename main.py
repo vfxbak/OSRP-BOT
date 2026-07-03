@@ -30,6 +30,9 @@ POINTS = {
     "ban": 4
 }
 
+MANAGEMENT_ROLE_ID = 1517687053134069911
+DIRECTORSHIP_ROLE_ID = 1517686125177737228
+
 PUNISHER_ROLES = {
     "[administration team]",
     "[internal affairs team]",
@@ -95,8 +98,13 @@ kicked_db = load_json(KICKED_FILE)
 appeal_tokens_db = load_json(APPEAL_TOKENS_FILE)
 
 
+MANAGEMENT_ROLE_IDS = {MANAGEMENT_ROLE_ID, DIRECTORSHIP_ROLE_ID}
+
 def has_any_role(member: discord.Member, role_names: set) -> bool:
     return any(r.name.lower() in role_names for r in member.roles)
+
+def has_staff_role(member: discord.Member) -> bool:
+    return any(r.id in MANAGEMENT_ROLE_IDS for r in member.roles)
 
 
 def find_user_id_in_embed(embed: discord.Embed) -> str | None:
@@ -181,7 +189,7 @@ def get_ordinal(n: int) -> str:
 
 
 def generate_appeal_token() -> str:
-    return secrets.token_urlsafe(32)
+    return secrets.token_hex(5).upper()  # 10-char hex code
 
 
 async def delete_after_delay(msg: discord.Message, seconds: int):
@@ -790,24 +798,13 @@ async def handle_ban_appeal_dm(user: discord.Member, punishment_type: str, total
         else:
             token = existing_token
         
-        appeal_url = f"{BASE_URL}/appeal?token={token}"
-        
-        class AppealLinkView(discord.ui.View):
-            def __init__(self):
-                super().__init__()
-                self.add_item(discord.ui.Button(
-                    label="Submit Ban Appeal (Web)",
-                    url=appeal_url,
-                    style=discord.ButtonStyle.link
-                ))
-        
         await user.send(
             f"You have been {punishment_type} from **Oklahoma State Roleplay**.\n\n"
             f"You currently have **{total_points} points** (threshold: {POINT_THRESHOLD}).\n\n"
-            f"â³ **Note:** You can only submit a ban appeal **{APPEAL_COOLDOWN_DAYS} days** after your ban.\n"
-            f"Once the cooldown has passed, use the button below to submit your appeal.\n\n"
-            f"*This link is unique to you â€” do not share it.*",
-            view=AppealLinkView()
+            f"**Note:** You can only submit a ban appeal **{APPEAL_COOLDOWN_DAYS} days** after your ban.\n"
+            f"Once the cooldown has passed, go to {BASE_URL}/appeal and enter your unique appeal code.\n\n"
+            f"**Your Appeal Code:** `{token}`\n\n"
+            f"*This code is unique to you â€” do not share it.*"
         )
         print(f"[APPEAL] DM sent to {user.id} with appeal token {token}")
     except discord.Forbidden:
@@ -913,8 +910,6 @@ APPEAL_HTML = """<!DOCTYPE html>
         }
         .info-box .label { color: #8b949e; }
         .info-box .value { color: #c9d1d9; font-weight: 600; }
-        .info-box .cooldown-active { color: #f0883e; font-weight: 600; }
-        .info-box .cooldown-passed { color: #3fb950; font-weight: 600; }
         form { display: flex; flex-direction: column; gap: 16px; }
         label { font-size: 13px; font-weight: 600; color: #c9d1d9; }
         input, textarea {
@@ -926,6 +921,8 @@ APPEAL_HTML = """<!DOCTYPE html>
             font-size: 14px;
             font-family: inherit;
             transition: border-color 0.2s;
+            box-sizing: border-box;
+            width: 100%;
         }
         input:focus, textarea:focus {
             outline: none;
@@ -963,6 +960,13 @@ APPEAL_HTML = """<!DOCTYPE html>
             line-height: 1.6;
             color: #f0883e;
         }
+        .code-input {
+            text-align: center;
+            font-size: 24px;
+            letter-spacing: 8px;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
     </style>
 </head>
 <body>
@@ -973,6 +977,12 @@ APPEAL_HTML = """<!DOCTYPE html>
         <div id="error-box" class="error hidden"></div>
         <div id="success-box" class="success hidden"></div>
         <div id="cooldown-box" class="cooldown-warning hidden"></div>
+        
+        <div id="code-section">
+            <p style="margin-bottom:16px;color:#8b949e;">Enter the 10-character appeal code sent to your Discord DMs.</p>
+            <input type="text" id="code-input" class="code-input" maxlength="10" placeholder="XXXXXXXXXX" autocomplete="off">
+            <button id="code-submit-btn" style="margin-top:16px;width:100%;">Verify Code</button>
+        </div>
         
         <div id="info-box" class="info-box hidden">
             <div><span class="label">Discord:</span> <span class="value" id="info-discord"></span></div>
@@ -1007,60 +1017,79 @@ APPEAL_HTML = """<!DOCTYPE html>
     </div>
     
     <script>
-        const params = new URLSearchParams(window.location.search);
-        const token = params.get('token');
+        const tokenInput = document.getElementById('code-input');
+        const codeSection = document.getElementById('code-section');
+        const infoBox = document.getElementById('info-box');
+        const appealForm = document.getElementById('appeal-form');
+        const errorBox = document.getElementById('error-box');
+        const successBox = document.getElementById('success-box');
+        const cooldownBox = document.getElementById('cooldown-box');
         
-        if (!token) {
-            document.getElementById('error-box').textContent = 'Invalid appeal link. Please use the link sent to your Discord DMs.';
-            document.getElementById('error-box').classList.remove('hidden');
-            return;
-        }
+        let currentToken = null;
         
-        // Fetch token info
-        fetch('/api/appeal/info?token=' + encodeURIComponent(token))
-            .then(r => r.json())
-            .then(data => {
-                if (data.error) {
-                    document.getElementById('error-box').textContent = data.error;
-                    document.getElementById('error-box').classList.remove('hidden');
-                    return;
-                }
-                
-                if (data.used) {
-                    document.getElementById('error-box').textContent = 'This appeal link has already been used. If you need to submit another appeal, please contact staff.';
-                    document.getElementById('error-box').classList.remove('hidden');
-                    return;
-                }
-                
-                document.getElementById('info-discord').textContent = data.discord_username + ' (#' + data.discord_id + ')';
-                document.getElementById('info-punishment').textContent = data.punishment;
-                document.getElementById('info-status').textContent = data.cooldown_active ? 'Cooldown Active' : 'Eligible to Appeal';
-                document.getElementById('info-box').classList.remove('hidden');
-                
-                document.getElementById('discord_username').value = data.discord_username;
-                document.getElementById('discord_id').value = data.discord_id;
-                
-                if (data.cooldown_active) {
-                    document.getElementById('cooldown-box').textContent = 'You are currently on cooldown. You can submit an appeal after ' + data.cooldown_ends + '. Please wait until the cooldown has passed.';
-                    document.getElementById('cooldown-box').classList.remove('hidden');
-                    document.getElementById('submit-btn').disabled = true;
-                } else {
-                    document.getElementById('appeal-form').classList.remove('hidden');
-                }
-            })
-            .catch(err => {
-                document.getElementById('error-box').textContent = 'Failed to load appeal info. Please try again later.';
-                document.getElementById('error-box').classList.remove('hidden');
-            });
+        tokenInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('code-submit-btn').click();
+            }
+        });
         
-        document.getElementById('appeal-form').addEventListener('submit', function(e) {
+        document.getElementById('code-submit-btn').addEventListener('click', function() {
+            const token = tokenInput.value.trim().toUpperCase();
+            if (token.length !== 10) {
+                errorBox.textContent = 'Please enter a valid 10-character appeal code.';
+                errorBox.classList.remove('hidden');
+                return;
+            }
+            errorBox.classList.add('hidden');
+            
+            fetch('/api/appeal/info?token=' + encodeURIComponent(token))
+                .then(r => r.json())
+                .then(data => {
+                    if (data.error) {
+                        errorBox.textContent = data.error;
+                        errorBox.classList.remove('hidden');
+                        return;
+                    }
+                    
+                    if (data.used) {
+                        errorBox.textContent = 'This appeal code has already been used. If you need to submit another appeal, please contact staff.';
+                        errorBox.classList.remove('hidden');
+                        return;
+                    }
+                    
+                    currentToken = token;
+                    codeSection.classList.add('hidden');
+                    
+                    document.getElementById('info-discord').textContent = data.discord_username + ' (#' + data.discord_id + ')';
+                    document.getElementById('info-punishment').textContent = data.punishment;
+                    document.getElementById('info-status').textContent = data.cooldown_active ? 'Cooldown Active' : 'Eligible to Appeal';
+                    infoBox.classList.remove('hidden');
+                    
+                    document.getElementById('discord_username').value = data.discord_username;
+                    document.getElementById('discord_id').value = data.discord_id;
+                    
+                    if (data.cooldown_active) {
+                        cooldownBox.textContent = 'You are currently on cooldown. You can submit an appeal after ' + data.cooldown_ends + '. Please wait until the cooldown has passed.';
+                        cooldownBox.classList.remove('hidden');
+                        document.getElementById('submit-btn').disabled = true;
+                    } else {
+                        appealForm.classList.remove('hidden');
+                    }
+                })
+                .catch(err => {
+                    errorBox.textContent = 'Failed to load appeal info. Please try again later.';
+                    errorBox.classList.remove('hidden');
+                });
+        });
+        
+        appealForm.addEventListener('submit', function(e) {
             e.preventDefault();
             const submitBtn = document.getElementById('submit-btn');
             submitBtn.disabled = true;
             submitBtn.textContent = 'Submitting...';
             
             const data = {
-                token: token,
+                token: currentToken,
                 discord_username: document.getElementById('discord_username').value,
                 discord_id: document.getElementById('discord_id').value,
                 ban_reason: document.getElementById('ban_reason').value,
@@ -1076,19 +1105,20 @@ APPEAL_HTML = """<!DOCTYPE html>
             .then(r => r.json())
             .then(response => {
                 if (response.success) {
-                    document.getElementById('appeal-form').classList.add('hidden');
-                    document.getElementById('success-box').textContent = 'Your ban appeal has been submitted successfully! Staff will review it and you will be notified via Discord. Your appeal ID is: ' + response.appeal_id;
-                    document.getElementById('success-box').classList.remove('hidden');
+                    appealForm.classList.add('hidden');
+                    infoBox.classList.add('hidden');
+                    successBox.textContent = 'Your ban appeal has been submitted successfully! Staff will review it and you will be notified via Discord. Your appeal ID is: ' + response.appeal_id;
+                    successBox.classList.remove('hidden');
                 } else {
-                    document.getElementById('error-box').textContent = response.error || 'Submission failed. Please try again.';
-                    document.getElementById('error-box').classList.remove('hidden');
+                    errorBox.textContent = response.error || 'Submission failed. Please try again.';
+                    errorBox.classList.remove('hidden');
                     submitBtn.disabled = false;
                     submitBtn.textContent = 'Submit Appeal';
                 }
             })
             .catch(err => {
-                document.getElementById('error-box').textContent = 'Network error. Please try again.';
-                document.getElementById('error-box').classList.remove('hidden');
+                errorBox.textContent = 'Network error. Please try again.';
+                errorBox.classList.remove('hidden');
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Submit Appeal';
             });
@@ -1303,7 +1333,7 @@ async def mypoints(ctx):
 
 @bot.command()
 async def points(ctx, member: discord.Member = None):
-    if not has_any_role(ctx.author, VOID_ROLES):
+    if not has_any_role(ctx.author, VOID_ROLES) and not has_staff_role(ctx.author):
         return await ctx.send(
             "You don't have permission. Requires **[Management Team]** or **[Directorship Team]**."
         )
@@ -1317,7 +1347,7 @@ async def points(ctx, member: discord.Member = None):
 @bot.command()
 async def void(ctx, raw_user: str, *, raw_case: str):
     """Remove points for a case. Usage: !void <@user or user_id> <case number>"""
-    if not has_any_role(ctx.author, VOID_ROLES):
+    if not has_any_role(ctx.author, VOID_ROLES) and not has_staff_role(ctx.author):
         return await ctx.send(
             "You don't have permission. Requires **[Management Team]** or **[Directorship Team]**."
         )
@@ -1384,30 +1414,38 @@ async def sampleremind(ctx):
 @bot.command()
 @commands.has_permissions(manage_guild=True)
 async def sampleappeal(ctx):
-    """Send a sample ban appeal to preview the format."""
-    embed = build_appeal_review_embed(
-        discord_username="SampleUser#1234",
-        discord_id="123456789012345678",
-        avatar_url="https://cdn.discordapp.com/embed/avatars/0.png",
-        appeal_id="123456789012345678_1234567890",
-        ban_reason="I was banned for breaking rule 4. I've read the rules again and understand what I did wrong. I've been a member for 6 months with no other infractions.",
-        time_since_ban="2 months",
-        extra_info="I take full responsibility for my actions."
-    )
+    """Create a test appeal code for you to try the website."""
+    user_id_str = str(ctx.author.id)
     
-    class SampleAppealView(discord.ui.View):
-        def __init__(self):
-            super().__init__()
-        
-        @discord.ui.button(label="Approve", style=discord.ButtonStyle.green, disabled=True)
-        async def approve_sample(self, interaction: discord.Interaction, button: discord.ui.Button):
-            pass
-        
-        @discord.ui.button(label="Deny", style=discord.ButtonStyle.red, disabled=True)
-        async def deny_sample(self, interaction: discord.Interaction, button: discord.ui.Button):
-            pass
+    existing_token = None
+    for token, data in appeal_tokens_db.items():
+        if data.get("user_id") == user_id_str and not data.get("used"):
+            existing_token = token
+            break
     
-    await ctx.send(embed=embed, view=SampleAppealView())
+    if existing_token:
+        token = existing_token
+    else:
+        token = generate_appeal_token()
+        appeal_tokens_db[token] = {
+            "user_id": user_id_str,
+            "punishment": "ban",
+            "total_points": 10,
+            "created_at": (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=31)).isoformat(),
+            "used": False
+        }
+        save_json(APPEAL_TOKENS_FILE, appeal_tokens_db)
+    
+    try:
+        await ctx.author.send(
+            f"**Test Appeal Code**\n\n"
+            f"Your unique 10-character code: **`{token}`**\n\n"
+            f"Go to {BASE_URL}/appeal and enter this code to test the appeal form.\n\n"
+            f"*This token is set with a backdated creation date so the 30-day cooldown is already passed.*"
+        )
+        await ctx.send(f"Test appeal code sent to your DMs! Check your DMs.")
+    except:
+        await ctx.send(f"Could not DM you. Your code is: **`{token}`**\n\nGo to {BASE_URL}/appeal and enter it.")
 
 
 @bot.command()
@@ -1461,7 +1499,7 @@ async def checkbanappeal(ctx, user_id: str):
 @bot.command()
 @commands.has_permissions(manage_guild=True)
 async def resendappeallink(ctx, member: discord.Member):
-    """Resend the ban appeal link to a user. Admin only."""
+    """Resend the ban appeal code to a user. Admin only."""
     user_id_str = str(member.id)
     
     existing_token = None
@@ -1471,16 +1509,13 @@ async def resendappeallink(ctx, member: discord.Member):
             break
     
     if existing_token:
-        appeal_url = f"{BASE_URL}/appeal?token={existing_token}"
         try:
-            await member.send(f"Here is your ban appeal link for **Oklahoma State Roleplay**:\n{appeal_url}\n\n*This link is unique to you â€” do not share it.*")
-            await ctx.send(f"âœ… Appeal link resent to {member.mention}.")
+            await member.send(f"Your ban appeal code for **Oklahoma State Roleplay**:\n\n**`{existing_token}`**\n\nGo to {BASE_URL}/appeal and enter this code to submit your appeal.\n\n*This code is unique to you â€” do not share it.*")
+            await ctx.send(f"Appeal code resent to {member.mention}.")
         except:
-            await ctx.send(f"âŒ Could not DM {member.mention}. They may have DMs closed.")
+            await ctx.send(f"Could not DM {member.mention}. They may have DMs closed.")
     else:
-        # Create new token
         token = generate_appeal_token()
-        appeal_url = f"{BASE_URL}/appeal?token={token}"
         appeal_tokens_db[token] = {
             "user_id": user_id_str,
             "punishment": "ban",
@@ -1490,10 +1525,10 @@ async def resendappeallink(ctx, member: discord.Member):
         }
         save_json(APPEAL_TOKENS_FILE, appeal_tokens_db)
         try:
-            await member.send(f"Here is your ban appeal link for **Oklahoma State Roleplay**:\n{appeal_url}\n\n*This link is unique to you â€” do not share it.*")
-            await ctx.send(f"âœ… New appeal link created and sent to {member.mention}.")
+            await member.send(f"Your ban appeal code for **Oklahoma State Roleplay**:\n\n**`{token}`**\n\nGo to {BASE_URL}/appeal and enter this code to submit your appeal.\n\n*This code is unique to you â€” do not share it.*")
+            await ctx.send(f"New appeal code created and sent to {member.mention}.")
         except:
-            await ctx.send(f"âŒ Could not DM {member.mention}. They may have DMs closed.")
+            await ctx.send(f"Could not DM {member.mention}. They may have DMs closed.")
 
 
 # â”€â”€ Main â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
