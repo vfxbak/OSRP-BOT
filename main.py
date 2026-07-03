@@ -345,7 +345,7 @@ def build_appeal_review_embed(
     
     why_banned = appeal_data.get("why_banned", appeal_data.get("ban_reason", ""))
     if why_banned:
-        embed.add_field(name="\u200b", value=f"<:alert:1522684494119960586> **THIS USER WAS BANNED FOR:** {why_banned}", inline=False)
+        embed.add_field(name="\u200b", value=f"<:alert:1522684494119960586> This user was banned for: {why_banned}", inline=False)
     
     embed.set_footer(text=f"Appeal ID: {appeal_data.get('appeal_id', 'N/A')}")
     return embed
