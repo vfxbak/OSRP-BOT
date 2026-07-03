@@ -75,6 +75,7 @@ CASES_FILE  = os.path.join(os.path.dirname(__file__), "cases.json")
 APPEALS_FILE = os.path.join(os.path.dirname(__file__), "appeals.json")
 KICKED_FILE = os.path.join(os.path.dirname(__file__), "kicked.json")
 APPEAL_TOKENS_FILE = os.path.join(os.path.dirname(__file__), "appeal_tokens.json")
+BLACKLIST_FILE = os.path.join(os.path.dirname(__file__), "blacklist.json")
 
 last_command_channel: dict[str, int] = {}
 processed_cases: set[str] = set()
@@ -98,6 +99,7 @@ cases_db  = load_json(CASES_FILE)
 appeals_db = load_json(APPEALS_FILE)
 kicked_db = load_json(KICKED_FILE)
 appeal_tokens_db = load_json(APPEAL_TOKENS_FILE)
+blacklist_db = load_json(BLACKLIST_FILE)
 
 
 MANAGEMENT_ROLE_IDS = {MANAGEMENT_ROLE_ID, DIRECTORSHIP_ROLE_ID}
@@ -827,6 +829,20 @@ async def handle_ban_appeal_dm(user_id, punishment_type: str, total_points: int)
     user_id can be int or str - will try to fetch user even if not in server."""
     user_id_str = str(user_id)
     
+    # Check blacklist - don't send appeal code if blacklisted
+    if user_id_str in blacklist_db:
+        try:
+            user = await bot.fetch_user(int(user_id_str))
+            await user.send(
+                f"You have been {punishment_type} from **Oklahoma State Roleplay**.\n\n"
+                f"Your appeal has been **denied** and you are **blacklisted** from submitting an appeal. "
+                f"This decision is final."
+            )
+            print(f"[APPEAL] Blacklisted user {user_id} - no appeal code sent")
+        except:
+            pass
+        return
+    
     existing_token = None
     for token, data in appeal_tokens_db.items():
         if data.get("user_id") == user_id_str and not data.get("used"):
@@ -1101,6 +1117,13 @@ APPEAL_HTML = """<!DOCTYPE html>
             fetch('/api/appeal/info?token=' + encodeURIComponent(token))
                 .then(r => r.json())
                 .then(data => {
+                    if (data.error === 'blacklisted') {
+                        errorBox.innerHTML = 'You are **blacklisted** from submitting an appeal. This decision is final. If you believe this is a mistake, please contact server management through other means.';
+                        errorBox.classList.remove('hidden');
+                        document.getElementById('code-submit-btn').disabled = true;
+                        tokenInput.disabled = true;
+                        return;
+                    }
                     if (data.error) {
                         errorBox.textContent = data.error;
                         errorBox.classList.remove('hidden');
@@ -1191,9 +1214,12 @@ async def handle_appeal_info(request):
     token_data = appeal_tokens_db.get(token)
     
     if not token_data:
-        return web.json_response({"error": "Invalid or expired appeal link."}, status=404)
+        return web.json_response({"error": "Invalid or expired appeal code."}, status=404)
     
     user_id = token_data["user_id"]
+    
+    if user_id in blacklist_db:
+        return web.json_response({"error": "blacklisted"}, status=403)
     
     # Look up Discord user info
     guild = bot.get_guild(GUILD_ID)
@@ -1640,6 +1666,40 @@ async def resendappeallink(ctx, member: discord.Member):
             await ctx.send(f"New appeal code created and sent to {member.mention}.")
         except:
             await ctx.send(f"Could not DM {member.mention}. They may have DMs closed.")
+
+
+@bot.command()
+@commands.has_permissions(manage_guild=True)
+async def blacklist(ctx, action: str = None, user_id: str = None):
+    """Manage appeal blacklist. Usage: !blacklist add <user_id> | !blacklist remove <user_id> | !blacklist list"""
+    if action == "add":
+        if not user_id:
+            return await ctx.send("Usage: `!blacklist add <discord_user_id>`")
+        blacklist_db[user_id] = {
+            "added_by": str(ctx.author.id),
+            "added_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
+        }
+        save_json(BLACKLIST_FILE, blacklist_db)
+        await ctx.send(f"User `{user_id}` has been blacklisted from submitting appeals.")
+    
+    elif action == "remove":
+        if not user_id:
+            return await ctx.send("Usage: `!blacklist remove <discord_user_id>`")
+        if user_id in blacklist_db:
+            del blacklist_db[user_id]
+            save_json(BLACKLIST_FILE, blacklist_db)
+            await ctx.send(f"User `{user_id}` has been removed from the appeal blacklist.")
+        else:
+            await ctx.send(f"User `{user_id}` is not in the blacklist.")
+    
+    elif action == "list":
+        if not blacklist_db:
+            return await ctx.send("The blacklist is empty.")
+        entries = [f"<@{uid}> ({uid}) - {data['added_at']}" for uid, data in blacklist_db.items()]
+        await ctx.send(f"**Blacklisted Users ({len(entries)}):**\n" + "\n".join(entries))
+    
+    else:
+        await ctx.send("Usage: `!blacklist add <user_id>` | `!blacklist remove <user_id>` | `!blacklist list`")
 
 
 # â”€â”€ Main â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
