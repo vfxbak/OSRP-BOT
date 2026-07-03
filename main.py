@@ -1423,31 +1423,22 @@ async def sampleappeal(ctx):
     """Create a test appeal code for you to try the website."""
     user_id_str = str(ctx.author.id)
     
-    existing_token = None
-    for token, data in appeal_tokens_db.items():
-        if data.get("user_id") == user_id_str and not data.get("used"):
-            existing_token = token
-            break
-    
-    if existing_token:
-        token = existing_token
-    else:
-        token = generate_appeal_token()
-        appeal_tokens_db[token] = {
-            "user_id": user_id_str,
-            "punishment": "ban",
-            "total_points": 10,
-            "created_at": (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=31)).isoformat(),
-            "used": False
-        }
-        save_json(APPEAL_TOKENS_FILE, appeal_tokens_db)
+    token = generate_appeal_token()
+    appeal_tokens_db[token] = {
+        "user_id": user_id_str,
+        "punishment": "test ban",
+        "total_points": 10,
+        "created_at": (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=31)).isoformat(),
+        "used": False
+    }
+    save_json(APPEAL_TOKENS_FILE, appeal_tokens_db)
     
     try:
         await ctx.author.send(
             f"**Test Appeal Code**\n\n"
             f"Your unique 10-character code: **`{token}`**\n\n"
             f"Go to {BASE_URL}/appeal and enter this code to test the appeal form.\n\n"
-            f"*This token is set with a backdated creation date so the 30-day cooldown is already passed.*"
+            f"*This token is backdated so the 30-day cooldown is already passed.*"
         )
         await ctx.send(f"Test appeal code sent to your DMs! Check your DMs.")
     except:
