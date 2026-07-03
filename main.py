@@ -698,38 +698,41 @@ async def on_message(message):
 
             if user_id:
                 punished_user = message.guild.get_member(int(user_id))
-                if punished_user:
-                    current_points = points_db.get(str(punished_user.id), 0)
-                    current_points += matched_punishment[1]
-                    points_db[str(punished_user.id)] = current_points
-                    save_json(POINTS_FILE, points_db)
+                user_id_str = str(user_id)
+                
+                current_points = points_db.get(user_id_str, 0)
+                current_points += matched_punishment[1]
+                points_db[user_id_str] = current_points
+                save_json(POINTS_FILE, points_db)
 
-                    if case_number:
-                        processed_cases.add(case_number)
-                        cases_db[case_number] = {
-                            "user_id": str(punished_user.id),
-                            "punishment": matched_punishment[0],
-                            "points": matched_punishment[1],
-                            "guild_id": guild_id
-                        }
-                        save_json(CASES_FILE, cases_db)
+                if case_number:
+                    processed_cases.add(case_number)
+                    cases_db[case_number] = {
+                        "user_id": user_id_str,
+                        "punishment": matched_punishment[0],
+                        "points": matched_punishment[1],
+                        "guild_id": guild_id
+                    }
+                    save_json(CASES_FILE, cases_db)
 
-                    point_word = "point" if current_points == 1 else "points"
+                point_word = "point" if current_points == 1 else "points"
+                
+                mention = punished_user.mention if punished_user else f"<@{user_id}>"
 
-                    channel_id = last_command_channel.get(guild_id)
-                    target_channel = (
-                        message.guild.get_channel(channel_id)
-                        if channel_id else message.channel
-                    )
+                channel_id = last_command_channel.get(guild_id)
+                target_channel = (
+                    message.guild.get_channel(channel_id)
+                    if channel_id else message.channel
+                )
 
-                    pts_msg = await target_channel.send(
-                        f"{punished_user.mention} now has **{current_points} {point_word}**."
-                    )
-                    asyncio.create_task(delete_after_delay(pts_msg, 25))
-                    
-                    # If it's a ban/temp ban, generate appeal token and DM
-                    if matched_punishment[0] in ("ban", "temp ban", "tempban", "temp banned"):
-                        await handle_ban_appeal_dm(punished_user, matched_punishment[0], current_points)
+                pts_msg = await target_channel.send(
+                    f"{mention} now has **{current_points} {point_word}**."
+                )
+                asyncio.create_task(delete_after_delay(pts_msg, 25))
+                
+                # If it's a ban/temp ban, generate appeal token and DM
+                if matched_punishment[0] in ("ban", "temp ban", "tempban", "temp banned"):
+                    await handle_ban_appeal_dm(user_id, matched_punishment[0], current_points)
 
     # â”€â”€ Monitor ingame kick channel (ERLC webhooks) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if message.channel.id == INGAME_KICK_CHANNEL_ID and message.embeds:
@@ -773,31 +776,32 @@ async def on_message(message):
     await bot.process_commands(message)
 
 
-async def handle_ban_appeal_dm(user: discord.Member, punishment_type: str, total_points: int):
-    """Generate an appeal token and DM the user with ban appeal instructions."""
+async def handle_ban_appeal_dm(user_id, punishment_type: str, total_points: int):
+    """Generate an appeal token and DM the user with ban appeal instructions.
+    user_id can be int or str - will try to fetch user even if not in server."""
+    user_id_str = str(user_id)
+    
+    existing_token = None
+    for token, data in appeal_tokens_db.items():
+        if data.get("user_id") == user_id_str and not data.get("used"):
+            existing_token = token
+            break
+    
+    if not existing_token:
+        token = generate_appeal_token()
+        appeal_tokens_db[token] = {
+            "user_id": user_id_str,
+            "punishment": punishment_type,
+            "total_points": total_points,
+            "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "used": False
+        }
+        save_json(APPEAL_TOKENS_FILE, appeal_tokens_db)
+    else:
+        token = existing_token
+    
     try:
-        user_id_str = str(user.id)
-        
-        # Check if user already has an active appeal token
-        existing_token = None
-        for token, data in appeal_tokens_db.items():
-            if data.get("user_id") == user_id_str and not data.get("used"):
-                existing_token = token
-                break
-        
-        if not existing_token:
-            token = generate_appeal_token()
-            appeal_tokens_db[token] = {
-                "user_id": user_id_str,
-                "punishment": punishment_type,
-                "total_points": total_points,
-                "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-                "used": False
-            }
-            save_json(APPEAL_TOKENS_FILE, appeal_tokens_db)
-        else:
-            token = existing_token
-        
+        user = await bot.fetch_user(int(user_id_str))
         await user.send(
             f"You have been {punishment_type} from **Oklahoma State Roleplay**.\n\n"
             f"You currently have **{total_points} points** (threshold: {POINT_THRESHOLD}).\n\n"
@@ -806,11 +810,13 @@ async def handle_ban_appeal_dm(user: discord.Member, punishment_type: str, total
             f"**Your Appeal Code:** `{token}`\n\n"
             f"*This code is unique to you â€” do not share it.*"
         )
-        print(f"[APPEAL] DM sent to {user.id} with appeal token {token}")
+        print(f"[APPEAL] DM sent to {user_id} with appeal token {token}")
     except discord.Forbidden:
-        print(f"[APPEAL] Cannot DM {user.id} - DMs closed")
+        print(f"[APPEAL] Cannot DM {user_id} - DMs closed")
+    except discord.NotFound:
+        print(f"[APPEAL] User {user_id} not found")
     except Exception as e:
-        print(f"[APPEAL] Failed to send DM to {user.id}: {e}")
+        print(f"[APPEAL] Failed to send DM to {user_id}: {e}")
 
 
 async def handle_erlc_rejoin(guild: discord.Guild, roblox_username: str, embed: discord.Embed):
