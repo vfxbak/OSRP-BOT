@@ -641,6 +641,171 @@ async def sampleappeal(ctx):
     await ctx.send(embed=embed, view=SampleAppealView())
 
 
+@bot.command()
+async def warn(ctx, raw_user: str, *, reason: str = "No reason provided"):
+    """Warn a user. Usage: !warn <@user or user_id> [reason]"""
+    if not has_any_role(ctx.author, PUNISHER_ROLES):
+        return await ctx.send("❌ You don't have permission to use this command.")
+
+    user_id = resolve_user_id(raw_user)
+    member = ctx.guild.get_member(int(user_id)) if user_id.isdigit() else None
+
+    pts = POINTS["warn"]
+    current = points_db.get(user_id, 0) + pts
+    points_db[user_id] = current
+    save_json(POINTS_FILE, points_db)
+
+    case_number = str(max((int(k) for k in cases_db.keys()), default=0) + 1)
+    cases_db[case_number] = {
+        "user_id": user_id,
+        "punishment": "warn",
+        "points": pts,
+        "guild_id": str(ctx.guild.id)
+    }
+    save_json(CASES_FILE, cases_db)
+
+    mention = member.mention if member else f"<@{user_id}>"
+    point_word = "point" if current == 1 else "points"
+    await ctx.send(
+        f"⚠️ {mention} has been warned (Case #{case_number}, +{pts} pt). "
+        f"They now have **{current} {point_word}**."
+    )
+
+
+@bot.command()
+async def mute(ctx, raw_user: str, duration: str = "unspecified", *, reason: str = "No reason provided"):
+    """Mute a user. Usage: !mute <@user or user_id> [duration] [reason]"""
+    if not has_any_role(ctx.author, PUNISHER_ROLES):
+        return await ctx.send("❌ You don't have permission to use this command.")
+
+    user_id = resolve_user_id(raw_user)
+    member = ctx.guild.get_member(int(user_id)) if user_id.isdigit() else None
+
+    pts = POINTS["mute"]
+    current = points_db.get(user_id, 0) + pts
+    points_db[user_id] = current
+    save_json(POINTS_FILE, points_db)
+
+    case_number = str(max((int(k) for k in cases_db.keys()), default=0) + 1)
+    cases_db[case_number] = {
+        "user_id": user_id,
+        "punishment": "mute",
+        "points": pts,
+        "guild_id": str(ctx.guild.id)
+    }
+    save_json(CASES_FILE, cases_db)
+
+    mention = member.mention if member else f"<@{user_id}>"
+    point_word = "point" if current == 1 else "points"
+    await ctx.send(
+        f"🔇 {mention} has been muted for {duration} (Case #{case_number}, +{pts} pts). "
+        f"They now have **{current} {point_word}**."
+    )
+
+
+@bot.command()
+async def softban(ctx, raw_user: str, *, reason: str = "No reason provided"):
+    """Softban a user. Usage: !softban <@user or user_id> [reason]"""
+    if not has_any_role(ctx.author, PUNISHER_ROLES):
+        return await ctx.send("❌ You don't have permission to use this command.")
+
+    user_id = resolve_user_id(raw_user)
+    member = ctx.guild.get_member(int(user_id)) if user_id.isdigit() else None
+
+    pts = POINTS["softban"]
+    current = points_db.get(user_id, 0) + pts
+    points_db[user_id] = current
+    save_json(POINTS_FILE, points_db)
+
+    case_number = str(max((int(k) for k in cases_db.keys()), default=0) + 1)
+    cases_db[case_number] = {
+        "user_id": user_id,
+        "punishment": "softban",
+        "points": pts,
+        "guild_id": str(ctx.guild.id)
+    }
+    save_json(CASES_FILE, cases_db)
+
+    mention = member.mention if member else f"<@{user_id}>"
+    point_word = "point" if current == 1 else "points"
+    await ctx.send(
+        f"🔨 {mention} has been softbanned (Case #{case_number}, +{pts} pts). "
+        f"They now have **{current} {point_word}**."
+    )
+
+
+@bot.command()
+async def tempban(ctx, raw_user: str, duration: str = "unspecified", *, reason: str = "No reason provided"):
+    """Temp-ban a user. Usage: !tempban <@user or user_id> [duration] [reason]"""
+    if not has_any_role(ctx.author, PUNISHER_ROLES):
+        return await ctx.send("❌ You don't have permission to use this command.")
+
+    user_id = resolve_user_id(raw_user)
+    member = ctx.guild.get_member(int(user_id)) if user_id.isdigit() else None
+
+    pts = POINTS["temp ban"]
+    current = points_db.get(user_id, 0) + pts
+    points_db[user_id] = current
+    save_json(POINTS_FILE, points_db)
+
+    case_number = str(max((int(k) for k in cases_db.keys()), default=0) + 1)
+    cases_db[case_number] = {
+        "user_id": user_id,
+        "punishment": "temp ban",
+        "points": pts,
+        "guild_id": str(ctx.guild.id)
+    }
+    save_json(CASES_FILE, cases_db)
+
+    mention = member.mention if member else f"<@{user_id}>"
+    point_word = "point" if current == 1 else "points"
+    await ctx.send(
+        f"🔨 {mention} has been temp-banned for {duration} (Case #{case_number}, +{pts} pts). "
+        f"They now have **{current} {point_word}**."
+    )
+
+
+@bot.command()
+async def ban(ctx, raw_user: str, *, reason: str = "No reason provided"):
+    """Ban a user. Usage: !ban <@user or user_id> [reason]"""
+    if not has_any_role(ctx.author, PUNISHER_ROLES):
+        return await ctx.send("❌ You don't have permission to use this command.")
+
+    user_id = resolve_user_id(raw_user)
+    member = ctx.guild.get_member(int(user_id)) if user_id.isdigit() else None
+
+    pts = POINTS["ban"]
+    current = points_db.get(user_id, 0) + pts
+    points_db[user_id] = current
+    save_json(POINTS_FILE, points_db)
+
+    case_number = str(max((int(k) for k in cases_db.keys()), default=0) + 1)
+    cases_db[case_number] = {
+        "user_id": user_id,
+        "punishment": "ban",
+        "points": pts,
+        "guild_id": str(ctx.guild.id)
+    }
+    save_json(CASES_FILE, cases_db)
+
+    mention = member.mention if member else f"<@{user_id}>"
+    point_word = "point" if current == 1 else "points"
+    await ctx.send(
+        f"🔨 {mention} has been banned (Case #{case_number}, +{pts} pts). "
+        f"They now have **{current} {point_word}**."
+    )
+
+    # Send appeal form to the banned user via DM
+    if member:
+        try:
+            await member.send(
+                "You have been banned. Please fill out the ban appeal form below:",
+                view=AppealFormView()
+            )
+        except Exception:
+            print(f"[APPEAL] Could not DM ban appeal form to {user_id}")
+
+
 async def healthz(request):
     return web.Response(text="ok")
 
