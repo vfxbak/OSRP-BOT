@@ -200,7 +200,7 @@ async def delete_after_delay(msg: discord.Message, seconds: int):
     await asyncio.sleep(seconds)
     try:
         await msg.delete()
-    except:
+    except Exception:
         pass
 
 
@@ -604,14 +604,14 @@ class BanAppealModal(discord.ui.Modal, title="Ban Appeal Form"):
                     if welcome_ch:
                         try:
                             invite = await welcome_ch.create_invite(max_uses=1, max_age=86400)
-                        except:
+                        except Exception:
                             pass
                     
                     msg = f"Your ban appeal has been reviewed and has been **approved**. You have been unbanned from **{guild.name}**."
                     if invite:
                         msg += f"\n\nHere is an invite to rejoin the server: {invite.url}\n\n*This invite expires in 24 hours.*"
                     await user.send(msg)
-                except:
+                except Exception:
                     pass
             
             async def send_deny_dm(self, user_id, guild):
@@ -621,10 +621,9 @@ class BanAppealModal(discord.ui.Modal, title="Ban Appeal Form"):
                     await user.send(
                         f"Your ban appeal for **{guild.name}** has been reviewed and unfortunately has been **denied**.\n\n"
                         f"You may submit another appeal after **{three_months}** (3 months from today).\n\n"
-                        f"If you believe this decision was made in error, please contact server management through other means.\n\n"
                         f"We appreciate your understanding."
                     )
-                except:
+                except Exception:
                     pass
             
             @discord.ui.button(label="Approve", style=discord.ButtonStyle.green)
@@ -779,7 +778,7 @@ async def on_message(message):
                 asyncio.create_task(delete_after_delay(pts_msg, 25))
                 
                 # If it's a ban/temp ban, generate appeal token and DM
-                if matched_punishment[0] in ("ban", "temp ban", "tempban", "temp banned"):
+                if matched_punishment[0] in ("ban", "banned", "temp ban", "tempban", "temp banned"):
                     await handle_ban_appeal_dm(user_id, matched_punishment[0], current_points)
 
     # â”€â”€ Monitor ingame kick channel (ERLC webhooks) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -833,13 +832,17 @@ async def handle_ban_appeal_dm(user_id, punishment_type: str, total_points: int)
     if user_id_str in blacklist_db:
         try:
             user = await bot.fetch_user(int(user_id_str))
-            await user.send(
-                f"You have been {punishment_type} from **Oklahoma State Roleplay**.\n\n"
-                f"Your appeal has been **denied** and you are **blacklisted** from submitting an appeal. "
-                f"This decision is final."
+            blacklist_embed = discord.Embed(
+                description=(
+                    f"You have been {punishment_type} from **Oklahoma State Roleplay**.\n\n"
+                    f"Your appeal has been **denied** and you are **blacklisted** from submitting an appeal. "
+                    f"This decision is final."
+                ),
+                color=discord.Color.red()
             )
+            await user.send(embed=blacklist_embed)
             print(f"[APPEAL] Blacklisted user {user_id} - no appeal code sent")
-        except:
+        except Exception:
             pass
         return
     
@@ -864,14 +867,17 @@ async def handle_ban_appeal_dm(user_id, punishment_type: str, total_points: int)
     
     try:
         user = await bot.fetch_user(int(user_id_str))
-        await user.send(
-            f"You have been {punishment_type} from **Oklahoma State Roleplay**.\n\n"
-            f"You currently have **{total_points} points** (threshold: {POINT_THRESHOLD}).\n\n"
-            f"You can only submit a ban appeal **{APPEAL_COOLDOWN_DAYS} days** after your ban.\n"
-            f"Once the cooldown has passed, go to {BASE_URL}/appeal and enter this code to submit your appeal.\n\n"
-            f"**Your ban appeal code:** `{token}`\n\n"
-            f"This code is unique to you, do **not** share it or you risk being **__permanently banned without an appeal!__**"
+        appeal_url = f"{BASE_URL}/appeal"
+        appeal_embed = discord.Embed(
+            description=(
+                f"Your ban appeal code for **Oklahoma State Roleplay:**\n\n"
+                f"`{{ {token} }}`\n\n"
+                f"Go to [{appeal_url}]({appeal_url}) and enter this code to submit your appeal.\n\n"
+                f"<:alert:1522684494119960586> *This code is unique to you, sharing it can result in a **permanent ban without appeal from the server!***"
+            ),
+            color=EMBED_COLOR
         )
+        await user.send(embed=appeal_embed)
         print(f"[APPEAL] DM sent to {user_id} with appeal token {token}")
     except discord.Forbidden:
         print(f"[APPEAL] Cannot DM {user_id} - DMs closed")
@@ -1251,7 +1257,7 @@ async def handle_appeal_info(request):
 async def handle_appeal_submit(request):
     try:
         body = await request.json()
-    except:
+    except Exception:
         return web.json_response({"error": "Invalid JSON body."}, status=400)
     
     token = body.get("token", "")
@@ -1344,14 +1350,14 @@ async def handle_appeal_submit(request):
                         if welcome_ch:
                             try:
                                 invite = await welcome_ch.create_invite(max_uses=1, max_age=86400)
-                            except:
+                            except Exception:
                                 pass
                         
                         msg = f"Your ban appeal has been reviewed and has been **approved**. You have been unbanned from **{guild_obj.name}**."
                         if invite:
                             msg += f"\n\nHere is an invite to rejoin the server: {invite.url}\n\n*This invite expires in 24 hours.*"
                         await user.send(msg)
-                    except:
+                    except Exception:
                         pass
                 
                 async def send_deny_dm(self, user_id, guild_obj):
@@ -1361,10 +1367,9 @@ async def handle_appeal_submit(request):
                         await user.send(
                             f"Your ban appeal for **{guild_obj.name}** has been reviewed and unfortunately has been **denied**.\n\n"
                             f"You may submit another appeal after **{three_months}** (3 months from today).\n\n"
-                            f"If you believe this decision was made in error, please contact server management through other means.\n\n"
                             f"We appreciate your understanding."
                         )
-                    except:
+                    except Exception:
                         pass
                 
                 @discord.ui.button(label="Approve", style=discord.ButtonStyle.green)
@@ -1592,14 +1597,25 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 </body>
 </html>"""
 
+def require_dashboard_key(request):
+    """Check that DASHBOARD_KEY is set and the request provides the correct key."""
+    dashboard_key = os.environ.get("DASHBOARD_KEY")
+    if not dashboard_key:
+        return web.json_response({"error": "Dashboard not configured - set DASHBOARD_KEY environment variable"}, status=503)
+    key = request.headers.get("X-Admin-Key", "")
+    if key != dashboard_key:
+        return web.json_response({"error": "Invalid key"}, status=401)
+    return None
+
+
 async def handle_dashboard_page(request):
     return web.Response(text=DASHBOARD_HTML, content_type="text/html")
 
 
 async def handle_dashboard_data(request):
-    key = request.headers.get("X-Admin-Key", "")
-    if key != os.environ.get("DASHBOARD_KEY", ""):
-        return web.json_response({"error": "Invalid key"}, status=401)
+    err = require_dashboard_key(request)
+    if err:
+        return err
     
     total = len(appeals_db)
     pending = len([a for a in appeals_db.values() if a.get("status") == "pending"])
@@ -1613,18 +1629,18 @@ async def handle_dashboard_data(request):
 
 
 async def handle_dashboard_blacklist(request):
-    key = request.headers.get("X-Admin-Key", "")
-    if key != os.environ.get("DASHBOARD_KEY", ""):
-        return web.json_response({"error": "Invalid key"}, status=401)
+    err = require_dashboard_key(request)
+    if err:
+        return err
     
     users = [{"user_id": uid, "added_by": d.get("added_by", ""), "added_at": d.get("added_at", "")} for uid, d in blacklist_db.items()]
     return web.json_response({"users": users})
 
 
 async def handle_dashboard_blacklist_add(request):
-    key = request.headers.get("X-Admin-Key", "")
-    if key != os.environ.get("DASHBOARD_KEY", ""):
-        return web.json_response({"error": "Invalid key"}, status=401)
+    err = require_dashboard_key(request)
+    if err:
+        return err
     
     try:
         body = await request.json()
@@ -1638,14 +1654,14 @@ async def handle_dashboard_blacklist_add(request):
         }
         save_json(BLACKLIST_FILE, blacklist_db)
         return web.json_response({"success": True})
-    except:
+    except Exception:
         return web.json_response({"error": "Invalid request"}, status=400)
 
 
 async def handle_dashboard_blacklist_remove(request):
-    key = request.headers.get("X-Admin-Key", "")
-    if key != os.environ.get("DASHBOARD_KEY", ""):
-        return web.json_response({"error": "Invalid key"}, status=401)
+    err = require_dashboard_key(request)
+    if err:
+        return err
     
     try:
         body = await request.json()
@@ -1655,7 +1671,7 @@ async def handle_dashboard_blacklist_remove(request):
             save_json(BLACKLIST_FILE, blacklist_db)
             return web.json_response({"success": True})
         return web.json_response({"error": "User not found"}, status=404)
-    except:
+    except Exception:
         return web.json_response({"error": "Invalid request"}, status=400)
 
 
@@ -1676,14 +1692,24 @@ async def start_web_server():
     
     # Health check
     async def healthz(request):
+        if bot.is_closed():
+            return web.Response(text="bot disconnected", status=503)
         return web.Response(text="ok")
     app.router.add_get("/healthz", healthz)
     
     runner = web.AppRunner(app)
     await runner.setup()
     port = int(os.environ.get("PORT", 8080))
-    site = web.TCPSite(runner, "0.0.0.0", port)
-    await site.start()
+    for attempt in range(5):
+        try:
+            site = web.TCPSite(runner, "0.0.0.0", port)
+            await site.start()
+            break
+        except OSError:
+            if attempt < 4:
+                await asyncio.sleep(2)
+                continue
+            raise
     print(f"[WEB] Listening on 0.0.0.0:{port}")
 
 
@@ -1694,8 +1720,127 @@ async def mypoints(ctx):
     member = ctx.author
     total = points_db.get(str(member.id), 0)
     point_word = "point" if total == 1 else "points"
-    msg = await ctx.send(f"{member.mention}, you have **{total} {point_word}**.")
+    embed = discord.Embed(
+        description=f"{member.mention}, you have **{total} {point_word}**.",
+        color=EMBED_COLOR
+    )
+    msg = await ctx.send(embed=embed)
     asyncio.create_task(delete_after_delay(msg, 25))
+
+
+def parse_duration(text: str) -> tuple[int | None, str]:
+    """Parse a duration string like '1d', '24hr', '12h', '7d' into (minutes, display_string).
+    Returns (None, original_text) if not a valid duration."""
+    if not text:
+        return None, text
+    match = re.match(r"^(\d+)\s*(d|day|days|h|hr|hrs|hour|hours|m|min|mins|minute|minutes)$", text.strip(), re.IGNORECASE)
+    if not match:
+        return None, text
+    num = int(match.group(1))
+    unit = match.group(2).lower()
+    if unit in ("d", "day", "days"):
+        return num * 1440, f"{num}d"
+    if unit in ("h", "hr", "hrs", "hour", "hours"):
+        return num * 60, f"{num}hr"
+    if unit in ("m", "min", "mins", "minute", "minutes"):
+        return num, f"{num}m"
+    return None, text
+
+
+def resolve_member(ctx, user_id: str) -> discord.Member | None:
+    """Resolve a member from mention, raw ID, or try guild lookup."""
+    uid = resolve_user_id(user_id)
+    try:
+        return ctx.guild.get_member(int(uid))
+    except (ValueError, TypeError):
+        return None
+
+
+async def apply_punishment(ctx, target_id: str, punishment: str, points: int, duration: str = None, reason: str = None):
+    """Common logic for tracking a punishment and showing the result."""
+    user_id_str = resolve_user_id(target_id)
+    current_points = points_db.get(user_id_str, 0) + points
+    points_db[user_id_str] = current_points
+    save_json(POINTS_FILE, points_db)
+
+    case_number = str(int(datetime.datetime.now().timestamp()))
+    case_data = {
+        "user_id": user_id_str,
+        "punishment": punishment,
+        "points": points,
+        "guild_id": str(ctx.guild.id),
+        "moderator": str(ctx.author.id),
+        "reason": reason or "No reason provided"
+    }
+    if duration:
+        case_data["duration"] = duration
+    cases_db[case_number] = case_data
+    save_json(CASES_FILE, cases_db)
+
+    member = ctx.guild.get_member(int(user_id_str))
+    mention = member.mention if member else f"<@{user_id_str}>"
+    point_word = "point" if current_points == 1 else "points"
+
+    action_name = punishment.title()
+    embed = discord.Embed(
+        description=f"{mention} has been **{action_name}**. They now have **{current_points} {point_word}**.",
+        color=EMBED_COLOR
+    )
+    embed.set_author(name=f"{action_name} Issued", icon_url=ctx.author.display_avatar.url)
+    if duration:
+        embed.add_field(name="Duration", value=duration, inline=True)
+    if reason:
+        embed.add_field(name="Reason", value=reason, inline=False)
+    await ctx.send(embed=embed)
+
+
+@bot.command()
+async def warn(ctx, user_id: str, *, reason: str = None):
+    if not has_any_role(ctx.author, PUNISHER_ROLES) and not has_staff_role(ctx.author):
+        return
+    await apply_punishment(ctx, user_id, "warn", 1, reason=reason)
+
+
+@bot.command()
+async def mute(ctx, user_id: str, duration: str = None, *, reason: str = None):
+    if not has_any_role(ctx.author, PUNISHER_ROLES) and not has_staff_role(ctx.author):
+        return
+    dur_minutes, dur_display = parse_duration(duration or "")
+    if not duration or dur_minutes is None:
+        embed = discord.Embed(
+            description="Usage: `!mute <user_id> <duration> [reason]`\nDurations: `1d`, `24hr`, `12h`, `30m`, etc.",
+            color=EMBED_COLOR
+        )
+        await ctx.send(embed=embed)
+        return
+    await apply_punishment(ctx, user_id, "mute", 2, duration=dur_display, reason=reason)
+
+
+@bot.command()
+async def softban(ctx, user_id: str, *, reason: str = None):
+    if not has_any_role(ctx.author, PUNISHER_ROLES) and not has_staff_role(ctx.author):
+        return
+    await apply_punishment(ctx, user_id, "softban", 2, reason=reason)
+
+
+def parse_ban_args(user_id: str, duration: str = None, *, reason: str = None):
+    """Parse ban args. Duration optional — if present = tempban (4pts), if absent = perma ban (5pts)."""
+    if duration:
+        dur_minutes, dur_display = parse_duration(duration)
+        if dur_minutes is not None:
+            return user_id, "tempban", 4, dur_display, reason
+        reason = f"{duration} {reason or ''}".strip()
+    return user_id, "ban", 5, None, reason
+
+
+@bot.command()
+async def ban(ctx, user_id: str, duration: str = None, *, reason: str = None):
+    if not has_any_role(ctx.author, PUNISHER_ROLES) and not has_staff_role(ctx.author):
+        return
+    uid, punishment, pts, dur, reas = parse_ban_args(user_id, duration, reason=reason)
+    await apply_punishment(ctx, uid, punishment, pts, duration=dur, reason=reas)
+    total = points_db.get(uid, 0)
+    await handle_ban_appeal_dm(uid, punishment, total)
 
 
 @bot.command()
@@ -1708,7 +1853,11 @@ async def points(ctx, member: discord.Member = None):
         return await ctx.send("Please specify a user: `!points <@user or user_id>`")
     total = points_db.get(str(member.id), 0)
     point_word = "point" if total == 1 else "points"
-    await ctx.send(f"{member.mention} has **{total} {point_word}**.")
+    embed = discord.Embed(
+        description=f"{member.mention} has **{total} {point_word}**.",
+        color=EMBED_COLOR
+    )
+    await ctx.send(embed=embed)
 
 
 @bot.command()
@@ -1795,15 +1944,21 @@ async def sampleappeal(ctx):
     save_json(APPEAL_TOKENS_FILE, appeal_tokens_db)
     
     try:
-        await ctx.author.send(
-            f"**Test Appeal Code**\n\n"
-            f"Your unique 10-character code: **`{token}`**\n\n"
-            f"Go to {BASE_URL}/appeal and enter this code to test the appeal form.\n\n"
-            f"*This token is backdated so the 30-day cooldown is already passed.*"
+        appeal_url = f"{BASE_URL}/appeal"
+        dm_embed = discord.Embed(
+            description=(
+                f"Your ban appeal code for **Oklahoma State Roleplay:**\n\n"
+                f"`{{ {token} }}`\n\n"
+                f"Go to [{appeal_url}]({appeal_url}) and enter this code to submit your appeal.\n\n"
+                f"<:alert:1522684494119960586> *This code is unique to you, sharing it can result in a **permanent ban without appeal from the server!*"
+            ),
+            color=EMBED_COLOR
         )
+        await ctx.author.send(embed=dm_embed)
         await ctx.send(f"Test appeal code sent to your DMs! Check your DMs.")
-    except:
-        await ctx.send(f"Could not DM you. Your code is: **`{token}`**\n\nGo to {BASE_URL}/appeal and enter it.")
+    except Exception:
+        appeal_url = f"{BASE_URL}/appeal"
+        await ctx.send(f"Could not DM you. Your code is: `{{ {token} }}`\n\nGo to {appeal_url} and enter it.")
 
 
 @bot.command()
@@ -1816,12 +1971,19 @@ async def sampleapprove(ctx):
     if welcome_ch:
         try:
             invite = await welcome_ch.create_invite(max_uses=1, max_age=86400)
-        except:
+        except Exception:
             pass
-    msg = f"Your ban appeal has been reviewed and has been **approved**. You have been unbanned from **{guild.name}**."
+    embed = discord.Embed(
+        description=(
+            f"Your ban appeal has been reviewed and has been **approved**. "
+            f"You have been unbanned from **{guild.name}**."
+        ),
+        color=discord.Color.green()
+    )
+    embed.set_author(name="Ban Appeal Approved")
     if invite:
-        msg += f"\n\nHere is an invite to rejoin the server: {invite.url}\n\n*This invite expires in 24 hours.*"
-    await ctx.send(f"**Preview of approve DM:**\n{msg}")
+        embed.add_field(name="Invite", value=f"[Click to join]({invite.url})\n*Expires in 24 hours.*", inline=False)
+    await ctx.send(embed=embed)
 
 
 @bot.command()
@@ -1829,13 +1991,16 @@ async def sampleapprove(ctx):
 async def sampledeny(ctx):
     """Preview the deny DM message."""
     three_months = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=90)).strftime("%B %d, %Y")
-    msg = (
-        f"Your ban appeal for **{ctx.guild.name}** has been reviewed and unfortunately has been **denied**.\n\n"
-        f"You may submit another appeal after **{three_months}** (3 months from today).\n\n"
-        f"If you believe this decision was made in error, please contact server management through other means.\n\n"
-        f"We appreciate your understanding."
+    embed = discord.Embed(
+        description=(
+            f"Your ban appeal for **{ctx.guild.name}** has been reviewed and unfortunately has been **denied**.\n\n"
+            f"You may submit another appeal after **{three_months}** (3 months from today).\n\n"
+            f"We appreciate your understanding."
+        ),
+        color=discord.Color.red()
     )
-    await ctx.send(f"**Preview of deny DM:**\n{msg}")
+    embed.set_author(name="Ban Appeal Denied")
+    await ctx.send(embed=embed)
 
 
 @bot.command()
@@ -1898,11 +2063,25 @@ async def resendappeallink(ctx, member: discord.Member):
             existing_token = token
             break
     
+    appeal_url = f"{BASE_URL}/appeal"
+
+    async def send_appeal_dm(user, code):
+        appeal_embed = discord.Embed(
+            description=(
+                f"Your ban appeal code for **Oklahoma State Roleplay:**\n\n"
+                f"`{{ {code} }}`\n\n"
+                f"Go to [{appeal_url}]({appeal_url}) and enter this code to submit your appeal.\n\n"
+                f"<:alert:1522684494119960586> *This code is unique to you, sharing it can result in a **permanent ban without appeal from the server!***"
+            ),
+            color=EMBED_COLOR
+        )
+        await user.send(embed=appeal_embed)
+
     if existing_token:
         try:
-            await member.send(f"Your ban appeal code for **Oklahoma State Roleplay**:\n\n**`{existing_token}`**\n\nGo to {BASE_URL}/appeal and enter this code to submit your appeal.\n\n*This code is unique to you â€” do not share it.*")
+            await send_appeal_dm(member, existing_token)
             await ctx.send(f"Appeal code resent to {member.mention}.")
-        except:
+        except Exception:
             await ctx.send(f"Could not DM {member.mention}. They may have DMs closed.")
     else:
         token = generate_appeal_token()
@@ -1915,9 +2094,9 @@ async def resendappeallink(ctx, member: discord.Member):
         }
         save_json(APPEAL_TOKENS_FILE, appeal_tokens_db)
         try:
-            await member.send(f"Your ban appeal code for **Oklahoma State Roleplay**:\n\n**`{token}`**\n\nGo to {BASE_URL}/appeal and enter this code to submit your appeal.\n\n*This code is unique to you â€” do not share it.*")
+            await send_appeal_dm(member, token)
             await ctx.send(f"New appeal code created and sent to {member.mention}.")
-        except:
+        except Exception:
             await ctx.send(f"Could not DM {member.mention}. They may have DMs closed.")
 
 
