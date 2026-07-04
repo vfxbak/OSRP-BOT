@@ -838,15 +838,12 @@ async def handle_ban_appeal_dm(user_id, punishment_type: str, total_points: int)
     if user_id_str in blacklist_db:
         try:
             user = await bot.fetch_user(int(user_id_str))
-            blacklist_embed = discord.Embed(
-                description=(
-                    f"You have been {punishment_type} from **Oklahoma State Roleplay**.\n\n"
-                    f"Your appeal has been **denied** and you are **blacklisted** from submitting an appeal. "
-                    f"This decision is final."
-                ),
-                color=discord.Color.red()
+            msg = (
+                f"You have been {punishment_type} from **Oklahoma State Roleplay**.\n\n"
+                f"Your appeal has been **denied** and you are **blacklisted** from submitting an appeal. "
+                f"This decision is final."
             )
-            await user.send(embed=blacklist_embed)
+            await user.send(msg)
             print(f"[APPEAL] Blacklisted user {user_id} - no appeal code sent")
         except Exception:
             pass
@@ -874,16 +871,13 @@ async def handle_ban_appeal_dm(user_id, punishment_type: str, total_points: int)
     try:
         user = await bot.fetch_user(int(user_id_str))
         appeal_url = f"{BASE_URL}/appeal"
-        appeal_embed = discord.Embed(
-            description=(
-                f"Your ban appeal code for **Oklahoma State Roleplay:**\n\n"
-                f"`{{ {token} }}`\n\n"
-                f"Go to [{appeal_url}]({appeal_url}) and enter this code to submit your appeal.\n\n"
-                f"<:alert:1522684494119960586> *This code is unique to you, sharing it can result in a **permanent ban without appeal from the server!***"
-            ),
-            color=EMBED_COLOR
+        msg = (
+            f"Your ban appeal code for **Oklahoma State Roleplay:**\n\n"
+            f"`{{ {token} }}`\n\n"
+            f"Go to {appeal_url} and enter this code to submit your appeal.\n\n"
+            f"This code is unique to you, sharing it can result in a permanent ban without appeal from the server."
         )
-        await user.send(embed=appeal_embed)
+        await user.send(msg)
         print(f"[APPEAL] DM sent to {user_id} with appeal token {token}")
     except discord.Forbidden:
         print(f"[APPEAL] Cannot DM {user_id} - DMs closed")
@@ -1301,7 +1295,7 @@ APPEAL_HTML = """<!DOCTYPE html>
                     btn.textContent = 'Verify';
                     
                     if (data.error === 'blacklisted') {
-                        showError('You are <strong>blacklisted</strong> from submitting an appeal. This decision is final. If you believe this is a mistake, please contact server management through other means.');
+                        showError('You are blacklisted from submitting an appeal. This decision is final.');
                         tokenInput.disabled = true;
                         btn.disabled = true;
                         return;
@@ -1312,7 +1306,7 @@ APPEAL_HTML = """<!DOCTYPE html>
                     }
                     
                     if (data.used) {
-                        showError('This appeal code has already been used. If you need to submit another appeal, please contact staff.');
+                        showError('This appeal code has already been used. Please submit a new ban appeal to receive a fresh code.');
                         return;
                     }
                     
@@ -2911,16 +2905,13 @@ async def sampleappeal(ctx):
     
     try:
         appeal_url = f"{BASE_URL}/appeal"
-        dm_embed = discord.Embed(
-            description=(
-                f"Your ban appeal code for **Oklahoma State Roleplay:**\n\n"
-                f"`{{ {token} }}`\n\n"
-                f"Go to [{appeal_url}]({appeal_url}) and enter this code to submit your appeal.\n\n"
-                f"<:alert:1522684494119960586> *This code is unique to you, sharing it can result in a **permanent ban without appeal from the server!*"
-            ),
-            color=EMBED_COLOR
+        msg = (
+            f"Your ban appeal code for **Oklahoma State Roleplay:**\n\n"
+            f"`{{ {token} }}`\n\n"
+            f"Go to {appeal_url} and enter this code to submit your appeal.\n\n"
+            f"This code is unique to you, sharing it can result in a permanent ban without appeal from the server."
         )
-        await ctx.author.send(embed=dm_embed)
+        await ctx.author.send(msg)
         await ctx.send(f"Test appeal code sent to your DMs! Check your DMs.")
     except Exception:
         appeal_url = f"{BASE_URL}/appeal"
@@ -2939,17 +2930,13 @@ async def sampleapprove(ctx):
             invite = await welcome_ch.create_invite(max_uses=1, max_age=86400)
         except Exception:
             pass
-    embed = discord.Embed(
-        description=(
-            f"Your ban appeal has been reviewed and has been **approved**. "
-            f"You have been unbanned from **{guild.name}**."
-        ),
-        color=discord.Color.green()
+    msg = (
+        f"Your ban appeal has been reviewed and has been **approved**. "
+        f"You have been unbanned from **{guild.name}**."
     )
-    embed.set_author(name="Ban Appeal Approved")
     if invite:
-        embed.add_field(name="Invite", value=f"[Click to join]({invite.url})\n*Expires in 24 hours.*", inline=False)
-    await ctx.send(embed=embed)
+        msg += f"\n\nInvite: {invite.url}\n*Expires in 24 hours.*"
+    await ctx.send(msg)
 
 
 @bot.command()
@@ -2957,16 +2944,12 @@ async def sampleapprove(ctx):
 async def sampledeny(ctx):
     """Preview the deny DM message."""
     three_months = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=90)).strftime("%B %d, %Y")
-    embed = discord.Embed(
-        description=(
-            f"Your ban appeal for **{ctx.guild.name}** has been reviewed and unfortunately has been **denied**.\n\n"
-            f"You may submit another appeal after **{three_months}** (3 months from today).\n\n"
-            f"We appreciate your understanding."
-        ),
-        color=discord.Color.red()
+    msg = (
+        f"Your ban appeal for **{ctx.guild.name}** has been reviewed and unfortunately has been **denied**.\n\n"
+        f"You may submit another appeal after **{three_months}** (3 months from today).\n\n"
+        f"We appreciate your understanding."
     )
-    embed.set_author(name="Ban Appeal Denied")
-    await ctx.send(embed=embed)
+    await ctx.send(msg)
 
 
 @bot.command()
@@ -3032,16 +3015,13 @@ async def resendappeallink(ctx, member: discord.Member):
     appeal_url = f"{BASE_URL}/appeal"
 
     async def send_appeal_dm(user, code):
-        appeal_embed = discord.Embed(
-            description=(
-                f"Your ban appeal code for **Oklahoma State Roleplay:**\n\n"
-                f"`{{ {code} }}`\n\n"
-                f"Go to [{appeal_url}]({appeal_url}) and enter this code to submit your appeal.\n\n"
-                f"<:alert:1522684494119960586> *This code is unique to you, sharing it can result in a **permanent ban without appeal from the server!***"
-            ),
-            color=EMBED_COLOR
+        msg = (
+            f"Your ban appeal code for **Oklahoma State Roleplay:**\n\n"
+            f"`{{ {code} }}`\n\n"
+            f"Go to {appeal_url} and enter this code to submit your appeal.\n\n"
+            f"This code is unique to you, sharing it can result in a permanent ban without appeal from the server."
         )
-        await user.send(embed=appeal_embed)
+        await user.send(msg)
 
     if existing_token:
         try:
