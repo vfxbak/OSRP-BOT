@@ -2009,9 +2009,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             <div class="logo">OS</div>
             <h1>Staff Dashboard</h1>
             <p>Oklahoma State Roleplay — Ban Appeal Management</p>
-            <input type="password" id="login-key" placeholder="Enter dashboard key" autocomplete="off">
-            <div id="login-error" class="alert alert-error hidden"></div>
-            <button id="login-btn">Sign In</button>
+                    <input type="password" id="login-key" placeholder="Enter dashboard key" autocomplete="off" onkeydown="if(event.key==='Enter')loginClick()">
+                    <div id="login-error" class="alert alert-error hidden"></div>
+                    <button id="login-btn" onclick="loginClick()">Sign In</button>
+                    <div id="login-error-fallback" style="display:none;margin-top:12px;padding:10px;border-radius:8px;background:rgba(248,81,73,0.1);border:1px solid rgba(248,81,73,0.3);color:#f85149;font-size:13px;"></div>
         </div>
     </div>
 
@@ -2108,6 +2109,35 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     </div>
 
     <script>
+        // Robust login handler (always works regardless of other JS issues)
+        function loginClick() {
+            var key = document.getElementById('login-key');
+            var err = document.getElementById('login-error-fallback');
+            if (!key || !key.value.trim()) { err.style.display='block'; err.textContent='Enter a key first.'; return; }
+            err.style.display='none';
+            try { localStorage.setItem('dashboard_key', key.value.trim()); } catch(e) {}
+            // Try the main login path; if it fails, loadDashboard doesn't exist yet, fallback to direct API call
+            if (typeof loadDashboard === 'function') { loadDashboard(); return; }
+            var x = new XMLHttpRequest();
+            x.open('GET', '/api/dashboard/data', true);
+            x.setRequestHeader('X-Admin-Key', key.value.trim());
+            x.onload = function() {
+                if (x.status === 200) {
+                    try {
+                        var d = JSON.parse(x.responseText);
+                        if (d && typeof d.total_appeals !== 'undefined') {
+                            document.getElementById('login-page').style.display='none';
+                            document.getElementById('dashboard-page').classList.remove('hidden');
+                            if (typeof loadDashboard === 'function') setTimeout(loadDashboard, 100);
+                        }
+                    } catch(e) { err.textContent='Invalid response from server.'; err.style.display='block'; }
+                } else if (x.status === 401) { err.textContent='Invalid dashboard key - check DASHBOARD_KEY env var on Railway.'; err.style.display='block'; }
+                else if (x.status === 503) { err.textContent='DASHBOARD_KEY not set on Railway. Add it in Variables.'; err.style.display='block'; }
+                else { err.textContent='Server error ('+x.status+').'; err.style.display='block'; }
+            };
+            x.onerror = function() { err.textContent='Cannot reach server.'; err.style.display='block'; };
+            x.send();
+        }
         const API_KEY = () => localStorage.getItem('dashboard_key');
         let currentFilter = 'all';
 
@@ -2158,17 +2188,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         }
 
         // ========== LOGIN ==========
-        document.getElementById('login-btn').addEventListener('click', doLogin);
-        document.getElementById('login-key').addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') doLogin();
-        });
-
-        async function doLogin() {
-            const key = document.getElementById('login-key').value.trim();
-            if (!key) return;
-            localStorage.setItem('dashboard_key', key);
-            await loadDashboard();
-        }
+        // Login handled via onclick/onkeydown attributes on the HTML elements
 
         document.getElementById('logout-btn').addEventListener('click', function() {
             localStorage.removeItem('dashboard_key');
