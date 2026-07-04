@@ -4,6 +4,7 @@ import json
 import os
 import re
 import datetime
+import time
 import aiohttp
 from aiohttp import web
 import secrets
@@ -81,6 +82,7 @@ NOTES_FILE = os.path.join(os.path.dirname(__file__), "notes.json")
 last_command_channel: dict[str, int] = {}
 processed_cases: set[str] = set()
 processed_message_ids: set[int] = set()
+recent_punishments: dict[str, float] = {}  # user_id -> timestamp, to avoid duplicate Circle bot responses
 banned_users_pending: dict[int, int] = {}  # user_id -> ban_case_number
 
 # â”€â”€ Data helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -765,16 +767,21 @@ async def on_message(message):
                 
                 mention = punished_user.mention if punished_user else f"<@{user_id}>"
 
-                channel_id = last_command_channel.get(guild_id)
-                target_channel = (
-                    message.guild.get_channel(channel_id)
-                    if channel_id else message.channel
-                )
-
-                pts_msg = await target_channel.send(
-                    f"{mention} now has **{current_points} {point_word}**."
-                )
-                asyncio.create_task(delete_after_delay(pts_msg, 25))
+                # Skip sending duplicate message if this user was just punished by a !command
+                now = time.time()
+                last_ts = recent_punishments.get(user_id_str)
+                if last_ts and (now - last_ts) < 3:
+                    recent_punishments.pop(user_id_str, None)
+                else:
+                    channel_id = last_command_channel.get(guild_id)
+                    target_channel = (
+                        message.guild.get_channel(channel_id)
+                        if channel_id else message.channel
+                    )
+                    pts_msg = await target_channel.send(
+                        f"{mention} now has **{current_points} {point_word}**."
+                    )
+                    asyncio.create_task(delete_after_delay(pts_msg, 25))
                 
                 # If it's a ban/temp ban, generate appeal token and DM
                 if matched_punishment[0] in ("ban", "banned", "temp ban", "tempban", "temp banned"):
@@ -2693,11 +2700,7 @@ async def mypoints(ctx):
     member = ctx.author
     total = points_db.get(str(member.id), 0)
     point_word = "point" if total == 1 else "points"
-    embed = discord.Embed(
-        description=f"{member.mention}, you have **{total} {point_word}**.",
-        color=EMBED_COLOR
-    )
-    msg = await ctx.send(embed=embed)
+    msg = await ctx.send(f"{member.mention}, you have **{total} {point_word}**.")
     asyncio.create_task(delete_after_delay(msg, 25))
 
 
@@ -2754,17 +2757,15 @@ async def apply_punishment(ctx, target_id: str, punishment: str, points: int, du
     mention = member.mention if member else f"<@{user_id_str}>"
     point_word = "point" if current_points == 1 else "points"
 
+    processed_cases.add(case_number)
+    recent_punishments[user_id_str] = time.time()
     action_name = punishment.title()
-    embed = discord.Embed(
-        description=f"{mention} has been **{action_name}**. They now have **{current_points} {point_word}**.",
-        color=EMBED_COLOR
-    )
-    embed.set_author(name=f"{action_name} Issued", icon_url=ctx.author.display_avatar.url)
+    msg = f"{mention} has been **{action_name}**. They now have **{current_points} {point_word}**."
     if duration:
-        embed.add_field(name="Duration", value=duration, inline=True)
+        msg += f" (Duration: {duration})"
     if reason:
-        embed.add_field(name="Reason", value=reason, inline=False)
-    await ctx.send(embed=embed)
+        msg += f" Reason: {reason}"
+    await ctx.send(msg)
 
 
 @bot.command()
@@ -2780,11 +2781,7 @@ async def mute(ctx, user_id: str, duration: str = None, *, reason: str = None):
         return
     dur_minutes, dur_display = parse_duration(duration or "")
     if not duration or dur_minutes is None:
-        embed = discord.Embed(
-            description="Usage: `!mute <user_id> <duration> [reason]`\nDurations: `1d`, `24hr`, `12h`, `30m`, etc.",
-            color=EMBED_COLOR
-        )
-        await ctx.send(embed=embed)
+        await ctx.send("Usage: `!mute <user_id> <duration> [reason]`\nDurations: `1d`, `24hr`, `12h`, `30m`, etc.")
         return
     await apply_punishment(ctx, user_id, "mute", 2, duration=dur_display, reason=reason)
 
@@ -2826,11 +2823,7 @@ async def points(ctx, member: discord.Member = None):
         return await ctx.send("Please specify a user: `!points <@user or user_id>`")
     total = points_db.get(str(member.id), 0)
     point_word = "point" if total == 1 else "points"
-    embed = discord.Embed(
-        description=f"{member.mention} has **{total} {point_word}**.",
-        color=EMBED_COLOR
-    )
-    await ctx.send(embed=embed)
+    await ctx.send(f"{member.mention} has **{total} {point_word}**.")
 
 
 @bot.command()
