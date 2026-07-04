@@ -954,161 +954,327 @@ APPEAL_HTML = """<!DOCTYPE html>
     <title>OSRP Ban Appeal</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: #0b0e14;
+            --bg-secondary: #131821;
+            --bg-card: #1a1f2b;
+            --border: #2a3142;
+            --text-primary: #e2e8f0;
+            --text-secondary: #8892a4;
+            --accent: #01d3ff;
+            --accent-glow: rgba(1, 211, 255, 0.15);
+            --green: #3fb950;
+            --red: #f85149;
+            --orange: #f0883e;
+            --radius: 10px;
+        }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
-            color: #c9d1d9;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 20px;
+            background: radial-gradient(ellipse at 50% 0%, rgba(1, 211, 255, 0.06) 0%, transparent 60%);
         }
-        .container {
+        .card {
             max-width: 600px;
             width: 100%;
-            background: #161b22;
-            border: 1px solid #30363d;
-            border-radius: 12px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 16px;
             padding: 40px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
         }
-        h1 { color: #01d3ff; margin-bottom: 8px; font-size: 24px; }
-        .subtitle { color: #8b949e; margin-bottom: 24px; font-size: 14px; }
-        .info-box {
-            background: #0d1117;
-            border: 1px solid #30363d;
-            border-radius: 8px;
-            padding: 16px;
+        .logo {
+            width: 48px; height: 48px;
+            background: linear-gradient(135deg, var(--accent), #0099cc);
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px; font-weight: 800; color: #fff;
+            margin-bottom: 20px;
+            box-shadow: 0 0 30px var(--accent-glow);
+        }
+        h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+        .subtitle { color: var(--text-secondary); font-size: 14px; margin-bottom: 28px; }
+        .section-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+
+        .info-grid {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px 20px;
             margin-bottom: 24px;
-            font-size: 13px;
-            line-height: 1.6;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
         }
-        .info-box .label { color: #8b949e; }
-        .info-box .value { color: #c9d1d9; font-weight: 600; }
+        .info-item .label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.3px; }
+        .info-item .value { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-top: 2px; }
+
+        .code-section {
+            text-align: center;
+            padding: 20px 0;
+        }
+        .code-section p { color: var(--text-secondary); font-size: 14px; margin-bottom: 20px; }
+        .code-input-wrap {
+            display: flex;
+            gap: 12px;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        .code-input {
+            flex: 1;
+            text-align: center;
+            font-size: 28px;
+            letter-spacing: 10px;
+            text-transform: uppercase;
+            font-weight: 700;
+            background: var(--bg-primary);
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px 16px;
+            color: var(--text-primary);
+            font-family: 'Consolas', monospace;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .code-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+        .code-input::placeholder { letter-spacing: 4px; font-size: 20px; color: #3a4255; }
+        .code-input-wrap button {
+            background: linear-gradient(135deg, var(--accent), #0099cc);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius);
+            padding: 14px 24px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            white-space: nowrap;
+        }
+        .code-input-wrap button:hover { opacity: 0.9; }
+        .code-input-wrap button:disabled { opacity: 0.5; cursor: not-allowed; }
+
         form { display: flex; flex-direction: column; gap: 16px; }
-        label { font-size: 13px; font-weight: 600; color: #c9d1d9; }
-        input, textarea {
-            background: #0d1117;
-            border: 1px solid #30363d;
-            border-radius: 6px;
+        .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.3px; }
+        .form-group input, .form-group textarea {
+            width: 100%;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
             padding: 10px 14px;
-            color: #c9d1d9;
+            color: var(--text-primary);
             font-size: 14px;
             font-family: inherit;
             transition: border-color 0.2s;
-            box-sizing: border-box;
-            width: 100%;
         }
-        input:focus, textarea:focus {
-            outline: none;
-            border-color: #01d3ff;
-        }
-        input:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-        textarea { resize: vertical; min-height: 100px; }
-        button {
-            background: #01d3ff;
-            color: #0d1117;
+        .form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+        .form-group input:disabled { opacity: 0.5; cursor: not-allowed; }
+        .form-group textarea { resize: vertical; min-height: 100px; }
+        .field-note { font-size: 11px; color: var(--text-secondary); margin-top: -4px; }
+
+        .btn-submit {
+            background: linear-gradient(135deg, var(--accent), #0099cc);
+            color: #fff;
             border: none;
-            border-radius: 6px;
-            padding: 12px 24px;
+            border-radius: var(--radius);
+            padding: 14px 24px;
             font-size: 16px;
             font-weight: 700;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: opacity 0.2s;
+            margin-top: 4px;
         }
-        button:hover { background: #00b8e6; }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
-        .error { color: #f85149; font-size: 13px; margin-top: 4px; }
-        .success { color: #3fb950; font-size: 14px; text-align: center; padding: 20px; }
-        .hidden { display: none; }
-        .field-note { font-size: 11px; color: #8b949e; margin-top: -8px; }
-        .cooldown-warning {
-            background: rgba(240, 136, 62, 0.1);
-            border: 1px solid #f0883e;
-            border-radius: 8px;
-            padding: 16px;
-            margin-bottom: 24px;
+        .btn-submit:hover { opacity: 0.9; }
+        .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .alert {
+            padding: 14px 18px;
+            border-radius: var(--radius);
             font-size: 13px;
-            line-height: 1.6;
-            color: #f0883e;
+            line-height: 1.5;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 20px;
         }
-        .code-input {
+        .alert-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+        .alert-error { background: rgba(248, 81, 73, 0.1); border: 1px solid rgba(248, 81, 73, 0.3); color: var(--red); }
+        .alert-success { background: rgba(63, 185, 80, 0.1); border: 1px solid rgba(63, 185, 80, 0.3); color: var(--green); text-align: center; }
+        .alert-warning { background: rgba(240, 136, 62, 0.1); border: 1px solid rgba(240, 136, 62, 0.3); color: var(--orange); }
+        .hidden { display: none !important; }
+
+        .success-content { text-align: center; padding: 20px 0; }
+        .success-content .check { font-size: 48px; margin-bottom: 16px; }
+        .success-content p { font-size: 14px; line-height: 1.6; color: var(--text-secondary); }
+        .success-content .appeal-id { display: inline-block; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 6px 14px; font-family: 'Consolas', monospace; font-size: 13px; margin-top: 12px; color: var(--accent); }
+
+        /* Steps indicator */
+        .steps { display: flex; gap: 8px; margin-bottom: 28px; }
+        .step {
+            flex: 1;
             text-align: center;
-            font-size: 24px;
-            letter-spacing: 8px;
-            text-transform: uppercase;
-            font-weight: 700;
+            font-size: 11px;
+            color: var(--text-secondary);
+            position: relative;
+            padding-top: 24px;
         }
+        .step::before {
+            content: '';
+            position: absolute;
+            top: 8px; left: 50%;
+            transform: translateX(-50%);
+            width: 12px; height: 12px;
+            border-radius: 50%;
+            background: var(--bg-card);
+            border: 2px solid var(--border);
+            transition: all 0.3s;
+        }
+        .step::after {
+            content: '';
+            position: absolute;
+            top: 13px; right: 50%;
+            width: 100%;
+            height: 2px;
+            background: var(--border);
+            z-index: 0;
+        }
+        .step:first-child::after { display: none; }
+        .step.active { color: var(--accent); font-weight: 600; }
+        .step.active::before { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 12px var(--accent-glow); }
+        .step.done { color: var(--green); }
+        .step.done::before { background: var(--green); border-color: var(--green); }
+
+        .cooldown-text strong { color: var(--orange); }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>OSRP Ban Appeal</h1>
-        <p class="subtitle">Oklahoma State Roleplay - Ban Appeal Submission</p>
+    <div class="card">
+        <div class="logo">OS</div>
+        <h1>Ban Appeal</h1>
+        <p class="subtitle">Oklahoma State Roleplay — Submit a ban appeal for review</p>
         
-        <div id="error-box" class="error hidden"></div>
-        <div id="success-box" class="success hidden"></div>
-        <div id="cooldown-box" class="cooldown-warning hidden"></div>
+        <div id="alert-area"></div>
         
+        <div class="steps">
+            <div class="step active" id="step-1">Enter Code</div>
+            <div class="step" id="step-2">Review Info</div>
+            <div class="step" id="step-3">Submit Appeal</div>
+        </div>
+        
+        <!-- Step 1: Enter Code -->
         <div id="code-section">
-            <p style="margin-bottom:16px;color:#8b949e;">Enter the 10-character appeal code sent to your Discord DMs.</p>
-            <input type="text" id="code-input" class="code-input" maxlength="10" placeholder="XXXXXXXXXX" autocomplete="off">
-            <button id="code-submit-btn" style="margin-top:16px;width:100%;">Verify Code</button>
+            <div class="code-section">
+                <p>Enter the 10-character appeal code you received in your Discord DMs.</p>
+                <div class="code-input-wrap">
+                    <input type="text" id="code-input" class="code-input" maxlength="10" placeholder="CODE" autocomplete="off" spellcheck="false">
+                    <button id="code-submit-btn">Verify</button>
+                </div>
+            </div>
         </div>
         
-        <div id="info-box" class="info-box hidden">
-            <div><span class="label">Discord:</span> <span class="value" id="info-discord"></span></div>
-            <div><span class="label">Punishment:</span> <span class="value" id="info-punishment"></span></div>
-            <div><span class="label">Status:</span> <span class="value" id="info-status"></span></div>
+        <!-- Info display -->
+        <div id="info-section" class="hidden">
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="label">Discord</div>
+                    <div class="value" id="info-discord">—</div>
+                </div>
+                <div class="info-item">
+                    <div class="label">Punishment</div>
+                    <div class="value" id="info-punishment">—</div>
+                </div>
+                <div class="info-item">
+                    <div class="label">Status</div>
+                    <div class="value" id="info-status">—</div>
+                </div>
+                <div class="info-item">
+                    <div class="label">Total Points</div>
+                    <div class="value" id="info-points">—</div>
+                </div>
+            </div>
         </div>
         
-        <form id="appeal-form" class="hidden">
+        <!-- Cooldown message -->
+        <div id="cooldown-box" class="alert alert-warning hidden">
+            <span class="alert-icon">&#9888;</span>
             <div>
+                <strong>Cooldown Active</strong><br>
+                <span id="cooldown-text"></span>
+            </div>
+        </div>
+        
+        <!-- Step 2/3: Appeal Form -->
+        <form id="appeal-form" class="hidden">
+            <div class="form-group">
                 <label for="discord_username">Discord Username</label>
                 <input type="text" id="discord_username" disabled>
             </div>
-            <div>
+            <div class="form-group">
                 <label for="discord_id">Discord ID</label>
                 <input type="text" id="discord_id" disabled>
             </div>
-            <div>
+            <div class="form-group">
                 <label for="why_banned">Why were you banned?</label>
-                <textarea id="why_banned" required></textarea>
+                <textarea id="why_banned" required placeholder="Explain what happened..."></textarea>
             </div>
-            <div>
+            <div class="form-group">
                 <label for="why_unban">Why do you deserve to be unbanned?</label>
-                <textarea id="why_unban" required></textarea>
+                <textarea id="why_unban" required placeholder="Explain why you should be given another chance..."></textarea>
             </div>
-            <div>
+            <div class="form-group">
                 <label for="time_since_ban">Time Since Ban</label>
-                <input type="text" id="time_since_ban" placeholder="e.g. 2 months" required>
+                <input type="text" id="time_since_ban" placeholder="e.g. 2 months, 3 weeks, etc." required>
             </div>
-            <div>
-                <label for="extra_info">Do you have any extra information to provide?</label>
-                <textarea id="extra_info" placeholder="Optional"></textarea>
-                <div class="field-note">Any additional context or information you'd like to share</div>
+            <div class="form-group">
+                <label for="extra_info">Extra Information</label>
+                <textarea id="extra_info" placeholder="Anything else you'd like to add? (Optional)"></textarea>
+                <div class="field-note">Any additional context that may help with your appeal</div>
             </div>
-            <button type="submit" id="submit-btn">Submit Appeal</button>
+            <button type="submit" class="btn-submit" id="submit-btn">Submit Appeal</button>
         </form>
+        
+        <!-- Success -->
+        <div id="success-box" class="hidden">
+            <div class="success-content">
+                <div class="check">&#10003;</div>
+                <h2 style="color:var(--green);font-size:20px;margin-bottom:8px;">Appeal Submitted</h2>
+                <p>Your ban appeal has been submitted successfully! Staff will review it and you will be notified via Discord.</p>
+                <div class="appeal-id" id="success-appeal-id"></div>
+            </div>
+        </div>
     </div>
     
     <script>
         const tokenInput = document.getElementById('code-input');
         const codeSection = document.getElementById('code-section');
-        const infoBox = document.getElementById('info-box');
+        const infoSection = document.getElementById('info-section');
         const appealForm = document.getElementById('appeal-form');
-        const errorBox = document.getElementById('error-box');
+        const alertArea = document.getElementById('alert-area');
         const successBox = document.getElementById('success-box');
         const cooldownBox = document.getElementById('cooldown-box');
         
         let currentToken = null;
         
+        function showError(msg) {
+            alertArea.innerHTML = '<div class="alert alert-error"><span class="alert-icon">&#10007;</span><span>' + msg + '</span></div>';
+        }
+        function clearAlerts() { alertArea.innerHTML = ''; }
+        
+        function updateSteps(active) {
+            for (let i = 1; i <= 3; i++) {
+                const s = document.getElementById('step-' + i);
+                s.classList.remove('active', 'done');
+                if (i < active) s.classList.add('done');
+                else if (i === active) s.classList.add('active');
+            }
+        }
+        
         tokenInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
+                e.preventDefault();
                 document.getElementById('code-submit-btn').click();
             }
         });
@@ -1116,61 +1282,68 @@ APPEAL_HTML = """<!DOCTYPE html>
         document.getElementById('code-submit-btn').addEventListener('click', function() {
             const token = tokenInput.value.trim().toUpperCase();
             if (token.length !== 10) {
-                errorBox.textContent = 'Please enter a valid 10-character appeal code.';
-                errorBox.classList.remove('hidden');
+                showError('Please enter a valid 10-character appeal code.');
                 return;
             }
-            errorBox.classList.add('hidden');
+            clearAlerts();
+            const btn = this;
+            btn.disabled = true;
+            btn.textContent = 'Checking...';
             
             fetch('/api/appeal/info?token=' + encodeURIComponent(token))
                 .then(r => r.json())
                 .then(data => {
+                    btn.disabled = false;
+                    btn.textContent = 'Verify';
+                    
                     if (data.error === 'blacklisted') {
-                        errorBox.innerHTML = 'You are **blacklisted** from submitting an appeal. This decision is final. If you believe this is a mistake, please contact server management through other means.';
-                        errorBox.classList.remove('hidden');
-                        document.getElementById('code-submit-btn').disabled = true;
+                        showError('You are <strong>blacklisted</strong> from submitting an appeal. This decision is final. If you believe this is a mistake, please contact server management through other means.');
                         tokenInput.disabled = true;
+                        btn.disabled = true;
                         return;
                     }
                     if (data.error) {
-                        errorBox.textContent = data.error;
-                        errorBox.classList.remove('hidden');
+                        showError(data.error);
                         return;
                     }
                     
                     if (data.used) {
-                        errorBox.textContent = 'This appeal code has already been used. If you need to submit another appeal, please contact staff.';
-                        errorBox.classList.remove('hidden');
+                        showError('This appeal code has already been used. If you need to submit another appeal, please contact staff.');
                         return;
                     }
                     
                     currentToken = token;
+                    updateSteps(2);
                     codeSection.classList.add('hidden');
                     
                     document.getElementById('info-discord').textContent = data.discord_username + ' (#' + data.discord_id + ')';
                     document.getElementById('info-punishment').textContent = data.punishment;
                     document.getElementById('info-status').textContent = data.cooldown_active ? 'Cooldown Active' : 'Eligible to Appeal';
-                    infoBox.classList.remove('hidden');
+                    document.getElementById('info-points').textContent = data.total_points;
+                    infoSection.classList.remove('hidden');
                     
                     document.getElementById('discord_username').value = data.discord_username;
                     document.getElementById('discord_id').value = data.discord_id;
                     
                     if (data.cooldown_active) {
-                        cooldownBox.textContent = 'You are currently on cooldown. You can submit an appeal after ' + data.cooldown_ends + '. Please wait until the cooldown has passed.';
                         cooldownBox.classList.remove('hidden');
+                        document.getElementById('cooldown-text').innerHTML = 'You can submit an appeal after <strong>' + data.cooldown_ends + '</strong>. Please wait until the cooldown period has ended.';
                         document.getElementById('submit-btn').disabled = true;
                     } else {
+                        updateSteps(3);
                         appealForm.classList.remove('hidden');
                     }
                 })
                 .catch(err => {
-                    errorBox.textContent = 'Failed to load appeal info. Please try again later.';
-                    errorBox.classList.remove('hidden');
+                    btn.disabled = false;
+                    btn.textContent = 'Verify';
+                    showError('Failed to load appeal info. Please try again later.');
                 });
         });
         
         appealForm.addEventListener('submit', function(e) {
             e.preventDefault();
+            clearAlerts();
             const submitBtn = document.getElementById('submit-btn');
             submitBtn.disabled = true;
             submitBtn.textContent = 'Submitting...';
@@ -1195,19 +1368,19 @@ APPEAL_HTML = """<!DOCTYPE html>
             .then(response => {
                 if (response.success) {
                     appealForm.classList.add('hidden');
-                    infoBox.classList.add('hidden');
-                    successBox.textContent = 'Your ban appeal has been submitted successfully! Staff will review it and you will be notified via Discord. Your appeal ID is: ' + response.appeal_id;
+                    infoSection.classList.add('hidden');
+                    cooldownBox.classList.add('hidden');
+                    document.getElementById('success-appeal-id').textContent = response.appeal_id;
                     successBox.classList.remove('hidden');
+                    updateSteps(0);
                 } else {
-                    errorBox.textContent = response.error || 'Submission failed. Please try again.';
-                    errorBox.classList.remove('hidden');
+                    showError(response.error || 'Submission failed. Please try again.');
                     submitBtn.disabled = false;
                     submitBtn.textContent = 'Submit Appeal';
                 }
             })
             .catch(err => {
-                errorBox.textContent = 'Network error. Please try again.';
-                errorBox.classList.remove('hidden');
+                showError('Network error. Please try again.');
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Submit Appeal';
             });
@@ -1229,20 +1402,31 @@ async def handle_appeal_info(request):
     if user_id in blacklist_db:
         return web.json_response({"error": "blacklisted"}, status=403)
     
-    # Look up Discord user info
-    guild = bot.get_guild(GUILD_ID)
+    # Look up Discord user info (works even for banned users via fetch_user)
     discord_username = "Unknown"
-    if guild:
-        member = guild.get_member(int(user_id))
-        if member:
-            discord_username = str(member)
+    try:
+        user = await bot.fetch_user(int(user_id))
+        discord_username = str(user)
+    except Exception:
+        guild = bot.get_guild(GUILD_ID)
+        if guild:
+            member = guild.get_member(int(user_id))
+            if member:
+                discord_username = str(member)
     
-    # Check cooldown (1 month from creation)
-    created_at = datetime.datetime.fromisoformat(token_data["created_at"])
+    # Check cooldown — only applies if user already has a denied appeal
     now = datetime.datetime.now(datetime.timezone.utc)
-    days_elapsed = (now - created_at).days
-    cooldown_active = days_elapsed < APPEAL_COOLDOWN_DAYS
-    cooldown_ends = (created_at + datetime.timedelta(days=APPEAL_COOLDOWN_DAYS)).strftime("%Y-%m-%d %H:%M UTC")
+    user_appeals = {k: v for k, v in appeals_db.items() if v.get("user_id") == user_id}
+    denied_appeals = [a for a in user_appeals.values() if a.get("status") == "denied"]
+    
+    cooldown_active = False
+    cooldown_ends = ""
+    if denied_appeals:
+        latest_denied = max(denied_appeals, key=lambda a: a.get("submitted_at", ""))
+        denied_at = datetime.datetime.fromisoformat(latest_denied["submitted_at"])
+        days_since_denied = (now - denied_at).days
+        cooldown_active = days_since_denied < APPEAL_COOLDOWN_DAYS
+        cooldown_ends = (denied_at + datetime.timedelta(days=APPEAL_COOLDOWN_DAYS)).strftime("%Y-%m-%d %H:%M UTC")
     
     return web.json_response({
         "discord_username": discord_username,
@@ -1287,15 +1471,19 @@ async def handle_appeal_submit(request):
     if discord_id != user_id:
         return web.json_response({"error": "Discord ID mismatch. This appeal link is not for this account."}, status=403)
     
-    # Check cooldown
-    created_at = datetime.datetime.fromisoformat(token_data["created_at"])
+    # Check cooldown — only applies if user already has a denied appeal
     now = datetime.datetime.now(datetime.timezone.utc)
-    days_elapsed = (now - created_at).days
-    if days_elapsed < APPEAL_COOLDOWN_DAYS:
-        cooldown_ends = (created_at + datetime.timedelta(days=APPEAL_COOLDOWN_DAYS)).strftime("%Y-%m-%d %H:%M UTC")
-        return web.json_response({
-            "error": f"You are still on cooldown. You can submit an appeal after {cooldown_ends}."
-        }, status=400)
+    user_appeals = {k: v for k, v in appeals_db.items() if v.get("user_id") == user_id}
+    denied_appeals = [a for a in user_appeals.values() if a.get("status") == "denied"]
+    if denied_appeals:
+        latest_denied = max(denied_appeals, key=lambda a: a.get("submitted_at", ""))
+        denied_at = datetime.datetime.fromisoformat(latest_denied["submitted_at"])
+        days_since_denied = (now - denied_at).days
+        if days_since_denied < APPEAL_COOLDOWN_DAYS:
+            cooldown_ends = (denied_at + datetime.timedelta(days=APPEAL_COOLDOWN_DAYS)).strftime("%Y-%m-%d %H:%M UTC")
+            return web.json_response({
+                "error": f"You are still on cooldown. You can submit an appeal after {cooldown_ends}."
+            }, status=400)
     
     # Create the appeal
     appeal_id = f"{user_id}_{int(now.timestamp())}"
