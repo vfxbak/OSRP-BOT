@@ -2007,9 +2007,8 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             <h1>Staff Dashboard</h1>
             <p>Oklahoma State Roleplay — Ban Appeal Management</p>
                     <input type="password" id="login-key" placeholder="Enter dashboard key" autocomplete="off" onkeydown="if(event.key==='Enter')loginClick()">
-                    <div id="login-error" class="alert alert-error hidden"></div>
                     <button id="login-btn" onclick="loginClick()">Sign In</button>
-                    <div id="login-error-fallback" style="display:none;margin-top:12px;padding:10px;border-radius:8px;background:rgba(248,81,73,0.1);border:1px solid rgba(248,81,73,0.3);color:#f85149;font-size:13px;"></div>
+                    <div id="login-error-fallback" style="display:none;margin-top:16px;padding:12px 16px;border-radius:8px;background:rgba(248,81,73,0.1);border:1px solid rgba(248,81,73,0.3);color:#f85149;font-size:14px;font-weight:500;"></div>
         </div>
     </div>
 
@@ -2106,47 +2105,20 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     </div>
 
     <script>
-        // Robust login handler (always works regardless of other JS issues)
-        function loginClick() {
-            var key = document.getElementById('login-key');
-            var err = document.getElementById('login-error-fallback');
-            if (!key || !key.value.trim()) { err.style.display='block'; err.textContent='Enter a key first.'; return; }
-            err.style.display='none';
-            try { localStorage.setItem('dashboard_key', key.value.trim()); } catch(e) {}
-            // Try the main login path; if it fails, loadDashboard doesn't exist yet, fallback to direct API call
-            if (typeof loadDashboard === 'function') { loadDashboard(); return; }
-            var x = new XMLHttpRequest();
-            x.open('GET', '/api/dashboard/data', true);
-            x.setRequestHeader('X-Admin-Key', key.value.trim());
-            x.onload = function() {
-                if (x.status === 200) {
-                    try {
-                        var d = JSON.parse(x.responseText);
-                        if (d && typeof d.total_appeals !== 'undefined') {
-                            document.getElementById('login-page').style.display='none';
-                            document.getElementById('dashboard-page').classList.remove('hidden');
-                            if (typeof loadDashboard === 'function') setTimeout(loadDashboard, 100);
-                        }
-                    } catch(e) { err.textContent='Invalid response from server.'; err.style.display='block'; }
-                } else if (x.status === 401) { err.textContent='Invalid dashboard key - check DASHBOARD_KEY env var on Railway.'; err.style.display='block'; }
-                else if (x.status === 503) { err.textContent='DASHBOARD_KEY not set on Railway. Add it in Variables.'; err.style.display='block'; }
-                else { err.textContent='Server error ('+x.status+').'; err.style.display='block'; }
-            };
-            x.onerror = function() { err.textContent='Cannot reach server.'; err.style.display='block'; };
-            x.send();
-        }
-        const API_KEY = () => localStorage.getItem('dashboard_key');
+        const API_KEY = () => { try { return localStorage.getItem('dashboard_key') || ''; } catch(e) { return ''; } };
         let currentFilter = 'all';
 
-        // ========== UTILITY ==========
-        function showAlert(id, msg, type) {
-            const el = document.getElementById(id);
-            el.className = 'alert alert-' + type;
-            el.innerHTML = msg;
-            el.classList.remove('hidden');
-            setTimeout(() => el.classList.add('hidden'), 4000);
+        function showLoginError(msg) {
+            var el = document.getElementById('login-error-fallback');
+            if (el) { el.textContent = msg; el.style.display = 'block'; }
         }
+        function hideLoginError() {
+            var el = document.getElementById('login-error-fallback');
+            if (el) el.style.display = 'none';
+        }
+
         function escapeHtml(text) {
+            if (!text) return '';
             const d = document.createElement('div');
             d.textContent = text;
             return d.innerHTML;
@@ -2156,96 +2128,99 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             const d = new Date(iso);
             return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
         }
+        function showAlert(id, msg, type) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            el.className = 'alert alert-' + type;
+            el.innerHTML = msg;
+            el.classList.remove('hidden');
+            setTimeout(function() { el.classList.add('hidden'); }, 4000);
+        }
 
         // ========== API CLIENT ==========
-        async function apiFetch(path, options = {}) {
-            const key = API_KEY();
-            const headers = { 'Content-Type': 'application/json', 'X-Admin-Key': key };
+        async function apiFetch(path, options) {
+            options = options || {};
+            var key = API_KEY();
+            var headers = { 'Content-Type': 'application/json', 'X-Admin-Key': key };
             try {
-                const res = await fetch(path, { ...options, headers });
+                var res = await fetch(path, { ...options, headers: { ...headers, ...(options.headers || {}) } });
                 if (res.status === 401) {
-                    localStorage.removeItem('dashboard_key');
-                    const errEl = document.getElementById('login-error');
-                    errEl.textContent = 'Invalid dashboard key. Check that DASHBOARD_KEY env var matches.';
-                    errEl.classList.remove('hidden');
-                    document.getElementById('login-page').classList.remove('hidden');
-                    document.getElementById('dashboard-page').classList.add('hidden');
+                    var k;
+                    try { localStorage.removeItem('dashboard_key'); } catch(e) {}
+                    showLoginError('Invalid dashboard key. Check that DASHBOARD_KEY env var matches the key you entered.');
                     return null;
                 }
                 if (res.status === 503) {
-                    const errEl = document.getElementById('login-error');
-                    errEl.textContent = 'Dashboard not configured - set DASHBOARD_KEY on Railway.';
-                    errEl.classList.remove('hidden');
+                    showLoginError('Dashboard not configured - set DASHBOARD_KEY on Railway.');
                     return null;
                 }
                 return res.json();
             } catch (e) {
-                return { error: 'Network error' };
+                return { error: 'Network error - could not reach server.' };
             }
         }
 
         // ========== LOGIN ==========
-        // Login handled via onclick/onkeydown attributes on the HTML elements
+        async function doLogin(keyValue) {
+            hideLoginError();
+            try { localStorage.setItem('dashboard_key', keyValue); } catch(e) {}
+            var [guild, data] = await Promise.all([
+                apiFetch('/api/dashboard/guild-info'),
+                apiFetch('/api/dashboard/data')
+            ]);
+            if (!data) return;
+            if (data.error) {
+                showLoginError(data.error);
+                try { localStorage.removeItem('dashboard_key'); } catch(e) {}
+                return;
+            }
+            document.getElementById('login-page').classList.add('hidden');
+            document.getElementById('dashboard-page').classList.remove('hidden');
+            renderDashboard(guild, data);
+        }
+
+        async function renderDashboard(guild, data) {
+            if (guild && !guild.error) {
+                document.getElementById('guild-name').textContent = (guild.name || 'OSRP') + ' — Staff Dashboard';
+                document.getElementById('guild-subtitle').textContent = (guild.member_count || '?') + ' members';
+                if (guild.icon_url) {
+                    document.getElementById('header-icon').innerHTML = '<img src="' + escapeHtml(guild.icon_url) + '" alt="" style="width:48px;height:48px;border-radius:12px;">';
+                }
+            }
+            document.getElementById('stat-total').textContent = data.total_appeals || 0;
+            document.getElementById('stat-pending').textContent = data.pending_appeals || 0;
+            document.getElementById('stat-approved').textContent = data.approved_appeals || 0;
+            document.getElementById('stat-denied').textContent = data.denied_appeals || 0;
+            document.getElementById('appeals-count').textContent = data.total_appeals || 0;
+            await Promise.all([ loadAppeals(), loadNotes(), loadBlacklist() ]);
+        }
+
+        function loginClick() {
+            var input = document.getElementById('login-key');
+            if (!input || !input.value.trim()) {
+                showLoginError('Enter the dashboard key first.');
+                if (input) input.focus();
+                return;
+            }
+            doLogin(input.value.trim());
+        }
+
+        // ========== AUTO-LOGIN ==========
+        (function() {
+            var k;
+            try { k = localStorage.getItem('dashboard_key'); } catch(e) {}
+            if (k) doLogin(k);
+        })();
 
         document.getElementById('logout-btn').addEventListener('click', function() {
-            localStorage.removeItem('dashboard_key');
+            try { localStorage.removeItem('dashboard_key'); } catch(e) {}
             document.getElementById('login-page').classList.remove('hidden');
             document.getElementById('dashboard-page').classList.add('hidden');
         });
 
-        document.getElementById('refresh-btn').addEventListener('click', function() {
-            loadDashboard();
+        document.getElementById('refresh-btn').addEventListener('click', async function() {
+            await doLogin(API_KEY());
         });
-
-        // ========== MAIN LOAD ==========
-        async function loadDashboard() {
-            document.getElementById('dashboard-page').classList.add('refreshing');
-
-            const [guild, data] = await Promise.all([
-                apiFetch('/api/dashboard/guild-info'),
-                apiFetch('/api/dashboard/data')
-            ]);
-
-            if (!data || data.error) {
-                if (data && data.error) {
-                    document.getElementById('login-error').textContent = data.error;
-                    document.getElementById('login-error').classList.remove('hidden');
-                }
-                localStorage.removeItem('dashboard_key');
-                document.getElementById('dashboard-page').classList.remove('refreshing');
-                return;
-            }
-
-            document.getElementById('login-page').classList.add('hidden');
-            document.getElementById('dashboard-page').classList.remove('hidden');
-
-            // Guild info
-            if (guild && !guild.error) {
-                document.getElementById('guild-name').textContent = guild.name + ' — Staff Dashboard';
-                document.getElementById('guild-subtitle').textContent = guild.member_count + ' members';
-                if (guild.icon_url) {
-                    const img = document.getElementById('header-icon');
-                    img.style.background = 'transparent';
-                    img.style.padding = '0';
-                    img.innerHTML = '<img src="' + escapeHtml(guild.icon_url) + '" alt="" style="width:48px;height:48px;border-radius:12px;">';
-                }
-            }
-
-            // Stats
-            document.getElementById('stat-total').textContent = data.total_appeals;
-            document.getElementById('stat-pending').textContent = data.pending_appeals;
-            document.getElementById('stat-approved').textContent = data.approved_appeals;
-            document.getElementById('stat-denied').textContent = data.denied_appeals;
-            document.getElementById('appeals-count').textContent = data.total_appeals;
-
-            await Promise.all([
-                loadAppeals(),
-                loadNotes(),
-                loadBlacklist()
-            ]);
-
-            document.getElementById('dashboard-page').classList.remove('refreshing');
-        }
 
         // ========== APPEALS ==========
         async function loadAppeals() {
@@ -2417,8 +2392,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             if (e.key === 'Enter') document.getElementById('blacklist-add-btn').click();
         });
 
-        // ========== AUTO-LOGIN ==========
-        if (localStorage.getItem('dashboard_key')) loadDashboard();
     </script>
 </body>
 </html>"""
