@@ -955,51 +955,134 @@ APPEAL_HTML = """<!DOCTYPE html>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
-            --bg-primary: #0a0c14;
-            --bg-secondary: #111624;
-            --bg-card: #171d2e;
-            --border: #252d44;
+            --bg-primary: #0b0d14;
+            --bg-secondary: #11131e;
+            --bg-card: #161a2b;
+            --border: #232841;
             --text-primary: #e2e8f0;
             --text-secondary: #8892a4;
-            --accent: #01d3ff;
-            --accent-glow: rgba(1, 211, 255, 0.15);
-            --green: #3fb950;
-            --red: #f85149;
-            --orange: #f0883e;
-            --radius: 10px;
+            --accent: #4fc3f7;
+            --accent-dim: rgba(79, 195, 247, 0.12);
+            --accent-glow: rgba(79, 195, 247, 0.15);
+            --green: #4ade80;
+            --red: #f87171;
+            --orange: #fb923c;
+            --radius: 12px;
         }
         body {
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: radial-gradient(ellipse at 50% 0%, rgba(1, 211, 255, 0.05) 0%, transparent 60%), var(--bg-primary);
+            background: var(--bg-primary);
             color: var(--text-primary);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 20px;
-            background: radial-gradient(ellipse at 50% 0%, rgba(1, 211, 255, 0.06) 0%, transparent 60%);
+            background-image: radial-gradient(ellipse at 50% 0%, rgba(79, 195, 247, 0.06) 0%, transparent 60%);
         }
         .card {
-            max-width: 600px;
+            max-width: 580px;
             width: 100%;
             background: var(--bg-secondary);
             border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 40px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            border-radius: 18px;
+            padding: 40px 36px;
+            box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+            position: relative;
+            overflow: hidden;
+        }
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+            opacity: 0.5;
         }
         .logo {
-            width: 48px; height: 48px;
-            background: linear-gradient(135deg, var(--accent), #0099cc);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+        .logo-icon {
+            width: 44px; height: 44px;
+            background: linear-gradient(135deg, var(--accent), #0288d1);
             border-radius: 12px;
             display: flex; align-items: center; justify-content: center;
-            font-size: 20px; font-weight: 800; color: #fff;
-            margin-bottom: 20px;
-            box-shadow: 0 0 30px var(--accent-glow);
+            font-size: 18px; font-weight: 800; color: #0b0d14;
+            flex-shrink: 0;
+            box-shadow: 0 0 24px var(--accent-glow);
         }
-        h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
-        .subtitle { color: var(--text-secondary); font-size: 14px; margin-bottom: 28px; }
-        .section-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+        .logo-text h1 { font-size: 20px; font-weight: 700; }
+        .logo-text .sub { font-size: 12px; color: var(--text-secondary); margin-top: 1px; }
+        .subtitle { color: var(--text-secondary); font-size: 13px; margin-bottom: 28px; line-height: 1.5; }
+
+        .steps {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 28px;
+            padding: 4px;
+            background: var(--bg-primary);
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+        .step {
+            flex: 1;
+            text-align: center;
+            padding: 8px 12px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            border-radius: 8px;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+        .step.active {
+            background: var(--accent);
+            color: #0b0d14;
+            font-weight: 700;
+        }
+        .step.done { color: var(--green); }
+
+        .code-section { text-align: center; padding: 12px 0 4px; }
+        .code-section p { color: var(--text-secondary); font-size: 14px; margin-bottom: 20px; }
+        .code-input-wrap {
+            display: flex;
+            gap: 10px;
+            max-width: 380px;
+            margin: 0 auto;
+        }
+        .code-input {
+            flex: 1;
+            text-align: center;
+            font-size: 26px;
+            letter-spacing: 8px;
+            text-transform: uppercase;
+            font-weight: 700;
+            background: var(--bg-primary);
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            padding: 12px 14px;
+            color: var(--text-primary);
+            font-family: 'Consolas', monospace;
+            transition: border-color 0.25s, box-shadow 0.25s;
+        }
+        .code-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+        .code-input::placeholder { letter-spacing: 4px; font-size: 18px; color: #2a3145; }
+        .code-input-wrap button {
+            background: linear-gradient(135deg, var(--accent), #0288d1);
+            color: #0b0d14;
+            font-weight: 700;
+            border: none;
+            border-radius: var(--radius);
+            padding: 12px 22px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+            white-space: nowrap;
+        }
+        .code-input-wrap button:hover { opacity: 0.9; transform: translateY(-1px); }
+        .code-input-wrap button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
         .info-grid {
             background: var(--bg-primary);
@@ -1011,54 +1094,11 @@ APPEAL_HTML = """<!DOCTYPE html>
             grid-template-columns: 1fr 1fr;
             gap: 12px;
         }
-        .info-item .label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.3px; }
-        .info-item .value { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-top: 2px; }
-
-        .code-section {
-            text-align: center;
-            padding: 20px 0;
-        }
-        .code-section p { color: var(--text-secondary); font-size: 14px; margin-bottom: 20px; }
-        .code-input-wrap {
-            display: flex;
-            gap: 12px;
-            max-width: 400px;
-            margin: 0 auto;
-        }
-        .code-input {
-            flex: 1;
-            text-align: center;
-            font-size: 28px;
-            letter-spacing: 10px;
-            text-transform: uppercase;
-            font-weight: 700;
-            background: var(--bg-primary);
-            border: 2px solid var(--border);
-            border-radius: var(--radius);
-            padding: 14px 16px;
-            color: var(--text-primary);
-            font-family: 'Consolas', monospace;
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
-        .code-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
-        .code-input::placeholder { letter-spacing: 4px; font-size: 20px; color: #3a4255; }
-        .code-input-wrap button {
-            background: linear-gradient(135deg, var(--accent), #0099cc);
-            color: #fff;
-            border: none;
-            border-radius: var(--radius);
-            padding: 14px 24px;
-            font-size: 15px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: opacity 0.2s;
-            white-space: nowrap;
-        }
-        .code-input-wrap button:hover { opacity: 0.9; }
-        .code-input-wrap button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .info-item .label { font-size: 10px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+        .info-item .value { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-top: 3px; }
 
         form { display: flex; flex-direction: column; gap: 16px; }
-        .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.3px; }
+        .form-group label { display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
         .form-group input, .form-group textarea {
             width: 100%;
             background: var(--bg-primary);
@@ -1066,108 +1106,89 @@ APPEAL_HTML = """<!DOCTYPE html>
             border-radius: 8px;
             padding: 10px 14px;
             color: var(--text-primary);
-            font-size: 14px;
+            font-size: 13px;
             font-family: inherit;
             transition: border-color 0.2s;
         }
-        .form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+        .form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
         .form-group input:disabled { opacity: 0.5; cursor: not-allowed; }
-        .form-group textarea { resize: vertical; min-height: 100px; }
+        .form-group textarea { resize: vertical; min-height: 90px; }
         .field-note { font-size: 11px; color: var(--text-secondary); margin-top: -4px; }
 
         .btn-submit {
-            background: linear-gradient(135deg, var(--accent), #0099cc);
-            color: #fff;
+            background: linear-gradient(135deg, var(--accent), #0288d1);
+            color: #0b0d14;
+            font-weight: 700;
             border: none;
             border-radius: var(--radius);
             padding: 14px 24px;
-            font-size: 16px;
-            font-weight: 700;
+            font-size: 15px;
             cursor: pointer;
-            transition: opacity 0.2s;
+            transition: opacity 0.2s, transform 0.1s;
             margin-top: 4px;
         }
-        .btn-submit:hover { opacity: 0.9; }
-        .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-submit:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn-submit:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
         .alert {
             padding: 14px 18px;
             border-radius: var(--radius);
             font-size: 13px;
-            line-height: 1.5;
+            line-height: 1.6;
             display: flex;
             align-items: flex-start;
             gap: 10px;
             margin-bottom: 20px;
         }
         .alert-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
-        .alert-error { background: rgba(248, 81, 73, 0.1); border: 1px solid rgba(248, 81, 73, 0.3); color: var(--red); }
-        .alert-success { background: rgba(63, 185, 80, 0.1); border: 1px solid rgba(63, 185, 80, 0.3); color: var(--green); text-align: center; }
-        .alert-warning { background: rgba(240, 136, 62, 0.1); border: 1px solid rgba(240, 136, 62, 0.3); color: var(--orange); }
+        .alert-error { background: rgba(248, 113, 113, 0.08); border: 1px solid rgba(248, 113, 113, 0.25); color: var(--red); }
+        .alert-success { background: rgba(74, 222, 128, 0.08); border: 1px solid rgba(74, 222, 128, 0.25); color: var(--green); text-align: center; }
+        .alert-warning { background: rgba(251, 146, 60, 0.08); border: 1px solid rgba(251, 146, 60, 0.25); color: var(--orange); }
+        .alert-info { background: var(--accent-dim); border: 1px solid rgba(79, 195, 247, 0.25); color: var(--accent); }
         .hidden { display: none !important; }
 
-        .success-content { text-align: center; padding: 20px 0; }
-        .success-content .check { font-size: 48px; margin-bottom: 16px; }
-        .success-content p { font-size: 14px; line-height: 1.6; color: var(--text-secondary); }
-        .success-content .appeal-id { display: inline-block; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 6px 14px; font-family: 'Consolas', monospace; font-size: 13px; margin-top: 12px; color: var(--accent); }
-
-        /* Steps indicator */
-        .steps { display: flex; gap: 8px; margin-bottom: 28px; }
-        .step {
-            flex: 1;
+        .blacklist-box {
+            background: rgba(248, 113, 113, 0.06);
+            border: 1px solid rgba(248, 113, 113, 0.2);
+            border-radius: var(--radius);
+            padding: 28px 24px;
             text-align: center;
-            font-size: 11px;
-            color: var(--text-secondary);
-            position: relative;
-            padding-top: 24px;
         }
-        .step::before {
-            content: '';
-            position: absolute;
-            top: 8px; left: 50%;
-            transform: translateX(-50%);
-            width: 12px; height: 12px;
-            border-radius: 50%;
-            background: var(--bg-card);
-            border: 2px solid var(--border);
-            transition: all 0.3s;
-        }
-        .step::after {
-            content: '';
-            position: absolute;
-            top: 13px; right: 50%;
-            width: 100%;
-            height: 2px;
-            background: var(--border);
-            z-index: 0;
-        }
-        .step:first-child::after { display: none; }
-        .step.active { color: var(--accent); font-weight: 600; }
-        .step.active::before { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 12px var(--accent-glow); }
-        .step.done { color: var(--green); }
-        .step.done::before { background: var(--green); border-color: var(--green); }
+        .blacklist-box .bl-icon { font-size: 40px; margin-bottom: 12px; }
+        .blacklist-box h3 { font-size: 18px; font-weight: 700; color: var(--red); margin-bottom: 8px; }
+        .blacklist-box p { font-size: 13px; line-height: 1.6; color: var(--text-secondary); }
+        .blacklist-box .bl-note { margin-top: 12px; padding: 10px 14px; background: var(--bg-primary); border-radius: 8px; font-size: 12px; color: var(--text-secondary); border: 1px solid var(--border); }
 
-        .cooldown-text strong { color: var(--orange); }
+        .success-content { text-align: center; padding: 16px 0; }
+        .success-content .check { font-size: 44px; margin-bottom: 14px; }
+        .success-content h2 { font-size: 20px; font-weight: 700; margin-bottom: 8px; color: var(--green); }
+        .success-content p { font-size: 13px; line-height: 1.6; color: var(--text-secondary); }
+        .success-content .appeal-id { display: inline-block; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 6px 14px; font-family: 'Consolas', monospace; font-size: 12px; margin-top: 12px; color: var(--accent); }
+
+        input:-webkit-autofill { -webkit-box-shadow: 0 0 0 1000px var(--bg-primary) inset; -webkit-text-fill-color: var(--text-primary); }
     </style>
 </head>
 <body>
     <div class="card">
-        <div class="logo">OS</div>
-        <h1>Ban Appeal</h1>
-        <p class="subtitle">Oklahoma State Roleplay — Submit a ban appeal for review</p>
+        <div class="logo">
+            <div class="logo-icon">OS</div>
+            <div class="logo-text">
+                <h1>OSRP Ban Appeal</h1>
+                <div class="sub">Oklahoma State Roleplay</div>
+            </div>
+        </div>
         
         <div id="alert-area"></div>
         
         <div class="steps">
             <div class="step active" id="step-1">Enter Code</div>
-            <div class="step" id="step-2">Review Info</div>
-            <div class="step" id="step-3">Submit Appeal</div>
+            <div class="step" id="step-2">Review</div>
+            <div class="step" id="step-3">Submit</div>
         </div>
         
-        <!-- Step 1: Enter Code -->
         <div id="code-section">
             <div class="code-section">
-                <p>Enter the 10-character appeal code you received in your Discord DMs.</p>
+                <p>Enter your 10-character appeal code from Discord.</p>
                 <div class="code-input-wrap">
                     <input type="text" id="code-input" class="code-input" maxlength="10" placeholder="CODE" autocomplete="off" spellcheck="false">
                     <button id="code-submit-btn">Verify</button>
@@ -1175,7 +1196,6 @@ APPEAL_HTML = """<!DOCTYPE html>
             </div>
         </div>
         
-        <!-- Info display -->
         <div id="info-section" class="hidden">
             <div class="info-grid">
                 <div class="info-item">
@@ -1197,7 +1217,6 @@ APPEAL_HTML = """<!DOCTYPE html>
             </div>
         </div>
         
-        <!-- Cooldown message -->
         <div id="cooldown-box" class="alert alert-warning hidden">
             <span class="alert-icon">&#9888;</span>
             <div>
@@ -1206,57 +1225,64 @@ APPEAL_HTML = """<!DOCTYPE html>
             </div>
         </div>
         
-        <!-- Step 2/3: Appeal Form -->
+        <div id="blacklist-box" class="hidden">
+            <div class="blacklist-box">
+                <div class="bl-icon">&#128274;</div>
+                <h3>Appeal Access Revoked</h3>
+                <p id="bl-message"></p>
+                <div id="bl-note-display" class="bl-note hidden"></div>
+            </div>
+        </div>
+        
         <form id="appeal-form" class="hidden">
             <div class="form-group">
-                <label for="discord_username">Discord Username</label>
+                <label>Discord Username</label>
                 <input type="text" id="discord_username" disabled>
             </div>
             <div class="form-group">
-                <label for="discord_id">Discord ID</label>
+                <label>Discord ID</label>
                 <input type="text" id="discord_id" disabled>
             </div>
             <div class="form-group">
-                <label for="why_banned">Why were you banned?</label>
-                <textarea id="why_banned" required placeholder="Explain what happened..."></textarea>
+                <label>Why were you banned?</label>
+                <textarea id="why_banned" required placeholder="Tell us what happened..."></textarea>
             </div>
             <div class="form-group">
-                <label for="why_unban">Why do you deserve to be unbanned?</label>
-                <textarea id="why_unban" required placeholder="Explain why you should be given another chance..."></textarea>
+                <label>Why should you be unbanned?</label>
+                <textarea id="why_unban" required placeholder="Explain why you deserve a second chance..."></textarea>
             </div>
             <div class="form-group">
-                <label for="time_since_ban">Time Since Ban</label>
-                <input type="text" id="time_since_ban" placeholder="e.g. 2 months, 3 weeks, etc." required>
+                <label>Time Since Ban</label>
+                <input type="text" id="time_since_ban" placeholder="e.g. 2 months, 3 weeks" required>
             </div>
             <div class="form-group">
-                <label for="extra_info">Extra Information</label>
-                <textarea id="extra_info" placeholder="Anything else you'd like to add? (Optional)"></textarea>
-                <div class="field-note">Any additional context that may help with your appeal</div>
+                <label>Extra Information</label>
+                <textarea id="extra_info" placeholder="Anything else we should know? (Optional)"></textarea>
+                <div class="field-note">Additional context that may help your case</div>
             </div>
             <button type="submit" class="btn-submit" id="submit-btn">Submit Appeal</button>
         </form>
         
-        <!-- Success -->
         <div id="success-box" class="hidden">
             <div class="success-content">
                 <div class="check">&#10003;</div>
-                <h2 style="color:var(--green);font-size:20px;margin-bottom:8px;">Appeal Submitted</h2>
-                <p>Your ban appeal has been submitted successfully! Staff will review it and you will be notified via Discord.</p>
+                <h2>Appeal Submitted</h2>
+                <p>Your appeal has been received. Staff will review it and you will be notified via Discord.</p>
                 <div class="appeal-id" id="success-appeal-id"></div>
             </div>
         </div>
     </div>
     
     <script>
-        const tokenInput = document.getElementById('code-input');
-        const codeSection = document.getElementById('code-section');
-        const infoSection = document.getElementById('info-section');
-        const appealForm = document.getElementById('appeal-form');
-        const alertArea = document.getElementById('alert-area');
-        const successBox = document.getElementById('success-box');
-        const cooldownBox = document.getElementById('cooldown-box');
-        
-        let currentToken = null;
+        var tokenInput = document.getElementById('code-input');
+        var codeSection = document.getElementById('code-section');
+        var infoSection = document.getElementById('info-section');
+        var appealForm = document.getElementById('appeal-form');
+        var alertArea = document.getElementById('alert-area');
+        var successBox = document.getElementById('success-box');
+        var cooldownBox = document.getElementById('cooldown-box');
+        var blacklistBox = document.getElementById('blacklist-box');
+        var currentToken = null;
         
         function showError(msg) {
             alertArea.innerHTML = '<div class="alert alert-error"><span class="alert-icon">&#10007;</span><span>' + msg + '</span></div>';
@@ -1264,8 +1290,8 @@ APPEAL_HTML = """<!DOCTYPE html>
         function clearAlerts() { alertArea.innerHTML = ''; }
         
         function updateSteps(active) {
-            for (let i = 1; i <= 3; i++) {
-                const s = document.getElementById('step-' + i);
+            for (var i = 1; i <= 3; i++) {
+                var s = document.getElementById('step-' + i);
                 s.classList.remove('active', 'done');
                 if (i < active) s.classList.add('done');
                 else if (i === active) s.classList.add('active');
@@ -1280,24 +1306,43 @@ APPEAL_HTML = """<!DOCTYPE html>
         });
         
         document.getElementById('code-submit-btn').addEventListener('click', function() {
-            const token = tokenInput.value.trim().toUpperCase();
+            var token = tokenInput.value.trim().toUpperCase();
             if (token.length !== 10) {
                 showError('Please enter a valid 10-character appeal code.');
                 return;
             }
             clearAlerts();
-            const btn = this;
+            blacklistBox.classList.add('hidden');
+            var btn = this;
             btn.disabled = true;
             btn.textContent = 'Checking...';
             
             fetch('/api/appeal/info?token=' + encodeURIComponent(token))
-                .then(r => r.json())
-                .then(data => {
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
                     btn.disabled = false;
                     btn.textContent = 'Verify';
                     
                     if (data.error === 'blacklisted') {
-                        showError('You are blacklisted from submitting an appeal. This decision is final.');
+                        var dur = data.bl_duration || 'permanent';
+                        var note = data.bl_note || '';
+                        var msgEl = document.getElementById('bl-message');
+                        var noteEl = document.getElementById('bl-note-display');
+                        if (dur === 'permanent') {
+                            msgEl.textContent = 'You have been permanently barred from submitting an appeal on Oklahoma State Roleplay. This decision is final and cannot be overturned.';
+                        } else if (dur === '3m') {
+                            msgEl.textContent = 'You are barred from submitting an appeal for 3 months. Please wait until the restriction period has passed.';
+                        } else if (dur === '6m') {
+                            msgEl.textContent = 'You are barred from submitting an appeal for 6 months. Please wait until the restriction period has passed.';
+                        }
+                        if (note) {
+                            noteEl.textContent = 'Reason: ' + note;
+                            noteEl.classList.remove('hidden');
+                        } else {
+                            noteEl.classList.add('hidden');
+                        }
+                        codeSection.classList.add('hidden');
+                        blacklistBox.classList.remove('hidden');
                         tokenInput.disabled = true;
                         btn.disabled = true;
                         return;
@@ -1308,7 +1353,7 @@ APPEAL_HTML = """<!DOCTYPE html>
                     }
                     
                     if (data.used) {
-                        showError('This appeal code has already been used. Please submit a new ban appeal to receive a fresh code.');
+                        showError('This code has already been used. You need a fresh appeal code.');
                         return;
                     }
                     
@@ -1318,7 +1363,7 @@ APPEAL_HTML = """<!DOCTYPE html>
                     
                     document.getElementById('info-discord').textContent = data.discord_username + ' (#' + data.discord_id + ')';
                     document.getElementById('info-punishment').textContent = data.punishment;
-                    document.getElementById('info-status').textContent = data.cooldown_active ? 'Cooldown Active' : 'Eligible to Appeal';
+                    document.getElementById('info-status').textContent = data.cooldown_active ? 'Cooldown Active' : 'Eligible';
                     document.getElementById('info-points').textContent = data.total_points;
                     infoSection.classList.remove('hidden');
                     
@@ -1327,45 +1372,43 @@ APPEAL_HTML = """<!DOCTYPE html>
                     
                     if (data.cooldown_active) {
                         cooldownBox.classList.remove('hidden');
-                        document.getElementById('cooldown-text').innerHTML = 'You can submit an appeal after <strong>' + data.cooldown_ends + '</strong>. Please wait until the cooldown period has ended.';
+                        document.getElementById('cooldown-text').innerHTML = 'You can submit an appeal after <strong>' + data.cooldown_ends + '</strong>.';
                         document.getElementById('submit-btn').disabled = true;
                     } else {
                         updateSteps(3);
                         appealForm.classList.remove('hidden');
                     }
                 })
-                .catch(err => {
+                .catch(function(err) {
                     btn.disabled = false;
                     btn.textContent = 'Verify';
-                    showError('Failed to load appeal info. Please try again later.');
+                    showError('Failed to load appeal info. Try again later.');
                 });
         });
         
         appealForm.addEventListener('submit', function(e) {
             e.preventDefault();
             clearAlerts();
-            const submitBtn = document.getElementById('submit-btn');
+            var submitBtn = document.getElementById('submit-btn');
             submitBtn.disabled = true;
             submitBtn.textContent = 'Submitting...';
-            
-            const data = {
-                token: currentToken,
-                discord_username: document.getElementById('discord_username').value,
-                discord_id: document.getElementById('discord_id').value,
-                why_banned: document.getElementById('why_banned').value,
-                why_unban: document.getElementById('why_unban').value,
-                ban_reason: document.getElementById('why_banned').value,
-                time_since_ban: document.getElementById('time_since_ban').value,
-                extra_info: document.getElementById('extra_info').value
-            };
             
             fetch('/api/appeal/submit', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                body: JSON.stringify({
+                    token: currentToken,
+                    discord_username: document.getElementById('discord_username').value,
+                    discord_id: document.getElementById('discord_id').value,
+                    why_banned: document.getElementById('why_banned').value,
+                    why_unban: document.getElementById('why_unban').value,
+                    ban_reason: document.getElementById('why_banned').value,
+                    time_since_ban: document.getElementById('time_since_ban').value,
+                    extra_info: document.getElementById('extra_info').value
+                })
             })
-            .then(r => r.json())
-            .then(response => {
+            .then(function(r) { return r.json(); })
+            .then(function(response) {
                 if (response.success) {
                     appealForm.classList.add('hidden');
                     infoSection.classList.add('hidden');
@@ -1373,14 +1416,18 @@ APPEAL_HTML = """<!DOCTYPE html>
                     document.getElementById('success-appeal-id').textContent = response.appeal_id;
                     successBox.classList.remove('hidden');
                     updateSteps(0);
+                } else if (response.error === 'blacklisted') {
+                    showError('You cannot submit this appeal. Your access has been restricted.');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Submit Appeal';
                 } else {
-                    showError(response.error || 'Submission failed. Please try again.');
+                    showError(response.error || 'Submission failed. Try again.');
                     submitBtn.disabled = false;
                     submitBtn.textContent = 'Submit Appeal';
                 }
             })
-            .catch(err => {
-                showError('Network error. Please try again.');
+            .catch(function(err) {
+                showError('Network error. Try again.');
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Submit Appeal';
             });
@@ -1400,7 +1447,16 @@ async def handle_appeal_info(request):
     user_id = token_data["user_id"]
     
     if user_id in blacklist_db:
-        return web.json_response({"error": "blacklisted"}, status=403)
+        bl = blacklist_db[user_id]
+        bl_duration = bl.get("duration", "permanent")
+        bl_note = bl.get("note", "")
+        bl_barred_until = bl.get("barred_until", None)
+        return web.json_response({
+            "error": "blacklisted",
+            "bl_duration": bl_duration,
+            "bl_note": bl_note,
+            "bl_barred_until": bl_barred_until,
+        }, status=403)
     
     # Look up Discord user info (works even for banned users via fetch_user)
     discord_username = "Unknown"
@@ -1466,6 +1522,9 @@ async def handle_appeal_submit(request):
         return web.json_response({"error": "This appeal link has already been used."}, status=400)
     
     user_id = token_data["user_id"]
+    
+    if user_id in blacklist_db:
+        return web.json_response({"error": "blacklisted"}, status=403)
     
     # Verify that the submitted Discord ID matches the token's user
     if discord_id != user_id:
@@ -1619,25 +1678,26 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
-            --bg-primary: #0a0c14;
-            --bg-secondary: #111624;
-            --bg-card: #171d2e;
-            --bg-card-hover: #1c2339;
-            --border: #252d44;
+            --bg-primary: #090b12;
+            --bg-secondary: #0f121e;
+            --bg-card: #151929;
+            --bg-card-hover: #1b2037;
+            --border: #222844;
             --text-primary: #e2e8f0;
             --text-secondary: #8892a4;
-            --accent: #01d3ff;
-            --accent-glow: rgba(1, 211, 255, 0.15);
-            --green: #3fb950;
-            --red: #f85149;
-            --orange: #f0883e;
-            --purple: #a371f7;
+            --accent: #4fc3f7;
+            --accent-dim: rgba(79, 195, 247, 0.1);
+            --accent-glow: rgba(79, 195, 247, 0.12);
+            --green: #4ade80;
+            --red: #f87171;
+            --orange: #fb923c;
+            --purple: #a78bfa;
             --radius: 10px;
             --sidebar-w: 220px;
         }
         body {
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: radial-gradient(ellipse at 50% 0%, rgba(1, 211, 255, 0.05) 0%, transparent 60%), var(--bg-primary);
+            background: radial-gradient(ellipse at 50% 0%, rgba(79, 195, 247, 0.06) 0%, transparent 60%), var(--bg-primary);
             color: var(--text-primary);
             min-height: 100vh;
         }
@@ -1659,7 +1719,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         }
         .login-card .logo {
             width: 64px; height: 64px;
-            background: linear-gradient(135deg, var(--accent), #0099cc);
+            background: linear-gradient(135deg, var(--accent), #0288d1);
             border-radius: 16px;
             display: flex; align-items: center; justify-content: center;
             font-size: 28px; font-weight: 800; color: #fff;
@@ -1682,7 +1742,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         .login-card input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
         .login-card button {
             width: 100%;
-            background: linear-gradient(135deg, var(--accent), #0099cc);
+            background: linear-gradient(135deg, var(--accent), #0288d1);
             color: #fff;
             border: none;
             border-radius: 8px;
@@ -1719,7 +1779,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         }
         .sidebar-brand .icon {
             width: 36px; height: 36px;
-            background: linear-gradient(135deg, var(--accent), #0099cc);
+            background: linear-gradient(135deg, var(--accent), #0288d1);
             border-radius: 10px;
             display: flex; align-items: center; justify-content: center;
             font-size: 16px; font-weight: 800; color: #fff;
@@ -1908,7 +1968,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         .btn:hover { background: var(--bg-card-hover); }
         .btn:active { transform: scale(0.98); }
         .btn-primary {
-            background: linear-gradient(135deg, var(--accent), #0099cc);
+            background: linear-gradient(135deg, var(--accent), #0288d1);
             color: #fff;
             border: none;
         }
@@ -2250,6 +2310,14 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                                     <label>Reason / Note</label>
                                     <textarea id="blacklist-note" placeholder="Why is this user being blacklisted?" rows="3"></textarea>
                                 </div>
+                                <div class="form-group">
+                                    <label>Duration</label>
+                                    <select id="blacklist-duration" style="width:100%;background:var(--bg-primary);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text-primary);font-size:13px;font-family:inherit;">
+                                        <option value="3m">3 Months</option>
+                                        <option value="6m">6 Months</option>
+                                        <option value="permanent" selected>Permanent</option>
+                                    </select>
+                                </div>
                                 <button id="blacklist-add-btn" class="btn btn-primary" style="width:100%;">Add to Blacklist</button>
                             </div>
                         </div>
@@ -2388,7 +2456,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         async function renderDashboard(guild, data) {
             if (guild && !guild.error) {
                 document.getElementById('guild-name').textContent = (guild.name || 'OSRP') + ' - Staff Dashboard';
-                document.getElementById('guild-subtitle').textContent = (guild.member_count || '?') + ' members';
+                document.getElementById('guild-subtitle').textContent = 'Ban Appeal Management';
             }
             document.getElementById('stat-total').textContent = data.total_appeals || 0;
             document.getElementById('stat-pending').textContent = data.pending_appeals || 0;
@@ -2532,7 +2600,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             var avatarHtml = u.avatar_url ? '<img src="' + escapeHtml(u.avatar_url) + '" alt="" loading="lazy">' : '<div class="placeholder">' + (u.username ? u.username[0].toUpperCase() : '?') + '</div>';
             var nameHtml = u.username && u.username !== u.user_id ? '<span class="name">' + escapeHtml(u.username) + '</span>' : '<span class="name"><code>' + escapeHtml(u.user_id) + '</code></span>';
             var noteHtml = u.note ? '<div class="note-text">' + escapeHtml(u.note) + '</div>' : '';
-            return '<div class="user-card"><div class="user-avatar">' + avatarHtml + '</div><div class="user-info">' + nameHtml + '<div class="uid">' + escapeHtml(u.user_id) + '</div>' + noteHtml + '</div><div class="user-meta"><button class="btn btn-danger btn-sm" onclick="removeBlacklist(\\'' + escapeHtml(u.user_id) + '\\')">Remove</button><div class="added-date">' + formatDate(u.added_at) + '</div></div></div>';
+            var durLabel = { '3m': '3 months', '6m': '6 months', 'permanent': 'Permanent' }[u.duration] || 'Permanent';
+            var durColor = u.duration === 'permanent' ? 'var(--red)' : 'var(--orange)';
+            var durHtml = '<div style="font-size:11px;color:' + durColor + ';margin-top:4px;">' + durLabel + '</div>';
+            return '<div class="user-card"><div class="user-avatar">' + avatarHtml + '</div><div class="user-info">' + nameHtml + '<div class="uid">' + escapeHtml(u.user_id) + '</div>' + noteHtml + durHtml + '</div><div class="user-meta"><button class="btn btn-danger btn-sm" onclick="removeBlacklist(\\'' + escapeHtml(u.user_id) + '\\')">Remove</button><div class="added-date">' + formatDate(u.added_at) + '</div></div></div>';
         }
 
         async function loadBlacklist() {
@@ -2555,17 +2626,19 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             if (data && data.success) loadBlacklist();
         }
 
-        function doBlacklistAdd(userId, note, resultId, btn) {
+        function doBlacklistAdd(userId, note, resultId, btn, duration) {
             if (!userId) return;
+            duration = duration || 'permanent';
             if (btn) { btn.disabled = true; btn.textContent = 'Adding...'; }
-            apiFetch('/api/dashboard/blacklist/add', { method: 'POST', body: JSON.stringify({ user_id: userId, note: note }) }).then(function(data) {
+            apiFetch('/api/dashboard/blacklist/add', { method: 'POST', body: JSON.stringify({ user_id: userId, note: note, duration: duration }) }).then(function(data) {
                 if (btn) { btn.disabled = false; btn.textContent = 'Add to Blacklist'; }
                 if (data && data.success) {
                     document.getElementById('blacklist-user-id').value = '';
                     document.getElementById('blacklist-note').value = '';
                     document.getElementById('mod-bl-id').value = '';
                     document.getElementById('mod-bl-note').value = '';
-                    showAlert(resultId, '<strong>' + escapeHtml(data.user && data.user.username ? data.user.username : userId) + '</strong> blacklisted.', 'success');
+                    var durLabel = { '3m': '3 months', '6m': '6 months', 'permanent': 'permanently' }[duration] || 'permanently';
+                    showAlert(resultId, '<strong>' + escapeHtml(data.user && data.user.username ? data.user.username : userId) + '</strong> blacklisted (' + durLabel + ').', 'success');
                     loadBlacklist();
                 } else if (data && data.error) {
                     showAlert(resultId, data.error, 'error');
@@ -2576,7 +2649,8 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         document.getElementById('blacklist-add-btn').addEventListener('click', function() {
             var userId = document.getElementById('blacklist-user-id').value.trim();
             var note = document.getElementById('blacklist-note').value.trim();
-            doBlacklistAdd(userId, note, 'blacklist-result', this);
+            var duration = document.getElementById('blacklist-duration').value;
+            doBlacklistAdd(userId, note, 'blacklist-result', this, duration);
         });
 
         document.getElementById('blacklist-user-id').addEventListener('keydown', function(e) {
@@ -2586,7 +2660,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         document.getElementById('mod-bl-btn').addEventListener('click', function() {
             var userId = document.getElementById('mod-bl-id').value.trim();
             var note = document.getElementById('mod-bl-note').value.trim();
-            doBlacklistAdd(userId, note, 'mod-bl-result', this);
+            doBlacklistAdd(userId, note, 'mod-bl-result', this, 'permanent');
         });
 
         document.getElementById('mod-bl-id').addEventListener('keydown', function(e) {
@@ -2598,11 +2672,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             if (!data) return;
             var g = await apiFetch('/api/dashboard/guild-info');
             var el = document.getElementById('mod-stats');
-            var name = (g && !g.error && g.name) ? g.name : 'OSRP';
-            var members = (g && !g.error && g.member_count) ? g.member_count.toLocaleString() : '?';
             el.innerHTML = '<div style="display:grid;gap:10px;">' +
-                '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text-secondary);">Server</span><strong>' + escapeHtml(name) + '</strong></div>' +
-                '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text-secondary);">Members</span><strong>' + members + '</strong></div>' +
                 '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text-secondary);">Appeals</span><strong>' + (data.total_appeals || 0) + '</strong></div>' +
                 '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text-secondary);">Blacklisted</span><strong>' + (data.blacklist_count || 0) + '</strong></div>' +
                 '<div style="display:flex;justify-content:space-between;padding:8px 0;"><span style="color:var(--text-secondary);">Pending</span><strong style="color:var(--orange);">' + (data.pending_appeals || 0) + '</strong></div>' +
@@ -2673,6 +2743,8 @@ async def handle_dashboard_blacklist(request):
             "username": data.get("username", None),
             "avatar_url": data.get("avatar_url", None),
             "note": data.get("note", ""),
+            "duration": data.get("duration", "permanent"),
+            "barred_until": data.get("barred_until", None),
         }
         # If no cached info, try to fetch it
         if not entry["username"]:
@@ -2702,14 +2774,25 @@ async def handle_dashboard_blacklist_add(request):
         body = await request.json()
         user_id = body.get("user_id", "").strip()
         note = body.get("note", "").strip()
+        duration = body.get("duration", "permanent")
+        if duration not in ("3m", "6m", "permanent"):
+            duration = "permanent"
         if not user_id:
             return web.json_response({"error": "User ID required"}, status=400)
         
+        now = datetime.datetime.now(datetime.timezone.utc)
         entry = {
             "added_by": "dashboard",
-            "added_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "added_at": now.isoformat(),
             "note": note,
+            "duration": duration,
         }
+        if duration == "3m":
+            entry["barred_until"] = (now + datetime.timedelta(days=90)).isoformat()
+        elif duration == "6m":
+            entry["barred_until"] = (now + datetime.timedelta(days=180)).isoformat()
+        else:
+            entry["barred_until"] = None
         
         # Fetch Discord user info for a cooler display
         try:
@@ -2721,6 +2804,26 @@ async def handle_dashboard_blacklist_add(request):
         
         blacklist_db[user_id] = entry
         save_json(BLACKLIST_FILE, blacklist_db)
+        
+        # DM the user about the blacklist
+        try:
+            dur_label = {"3m": "3 months", "6m": "6 months", "permanent": "permanently"}[duration]
+            bl_msg = (
+                f"You have been **blacklisted** from **Oklahoma State Roleplay**.\n\n"
+                f"You are barred from submitting an appeal for **{dur_label}**."
+            )
+            if duration == "permanent":
+                bl_msg = (
+                    f"You have been **blacklisted** and **permanently barred** from appealing "
+                    f"on **Oklahoma State Roleplay**.\n\n"
+                    f"This decision is final."
+                )
+            if note:
+                bl_msg += f"\n\nReason: {note}"
+            await user.send(bl_msg)
+        except Exception:
+            pass
+        
         return web.json_response({"success": True, "user": entry})
     except Exception as e:
         return web.json_response({"error": str(e)}, status=400)
@@ -2843,17 +2946,17 @@ ROOT_HTML = """<!DOCTYPE html>
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>OSRP</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:#0b0e14;color:#e2e8f0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(ellipse at 50% 0%,rgba(1,211,255,0.06) 0%,transparent 60%)}
-.card{max-width:440px;width:100%;background:#131821;border:1px solid #2a3142;border-radius:16px;padding:40px;box-shadow:0 20px 60px rgba(0,0,0,0.5);text-align:center}
-.logo{width:56px;height:56px;background:linear-gradient(135deg,#01d3ff,#0099cc);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff;margin:0 auto 20px;box-shadow:0 0 30px rgba(1,211,255,0.15)}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#090b12;color:#e2e8f0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(ellipse at 50% 0%,rgba(79,195,247,0.06) 0%,transparent 60%)}
+.card{max-width:440px;width:100%;background:#0f121e;border:1px solid #222844;border-radius:16px;padding:40px;box-shadow:0 20px 60px rgba(0,0,0,0.5);text-align:center}
+.logo{width:56px;height:56px;background:linear-gradient(135deg,#4fc3f7,#0288d1);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#090b12;margin:0 auto 20px;box-shadow:0 0 30px rgba(79,195,247,0.15)}
 h1{font-size:22px;font-weight:700;margin-bottom:4px}
 .sub{color:#8892a4;font-size:14px;margin-bottom:28px}
 .links{display:flex;flex-direction:column;gap:12px}
 .links a{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 20px;border-radius:10px;font-size:15px;font-weight:600;text-decoration:none;transition:all 0.2s}
-.links a.primary{background:linear-gradient(135deg,#01d3ff,#0099cc);color:#fff}
-.links a.primary:hover{opacity:0.9;box-shadow:0 0 20px rgba(1,211,255,0.2)}
-.links a.secondary{background:#1a1f2b;border:1px solid #2a3142;color:#e2e8f0}
-.links a.secondary:hover{background:#202635;border-color:#01d3ff}
+.links a.primary{background:linear-gradient(135deg,#4fc3f7,#0288d1);color:#090b12}
+.links a.primary:hover{opacity:0.9;box-shadow:0 0 20px rgba(79,195,247,0.2)}
+.links a.secondary{background:#151929;border:1px solid #222844;color:#e2e8f0}
+.links a.secondary:hover{background:#1b2037;border-color:#4fc3f7}
 .footer{margin-top:24px;font-size:12px;color:#8892a4}
 </style>
 </head>
