@@ -682,9 +682,6 @@ async def on_ready():
     
     daily_reminder.start()
     
-    # Start web server for ban appeal website
-    asyncio.create_task(start_web_server())
-    
     # Clean up expired kicked entries
     now = datetime.datetime.now(datetime.timezone.utc)
     expired = []
@@ -2636,8 +2633,52 @@ async def handle_dashboard_notes_delete(request):
         return web.json_response({"error": "Invalid request"}, status=400)
 
 
+ROOT_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>OSRP</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0b0e14;color:#e2e8f0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(ellipse at 50% 0%,rgba(1,211,255,0.06) 0%,transparent 60%)}
+.card{max-width:440px;width:100%;background:#131821;border:1px solid #2a3142;border-radius:16px;padding:40px;box-shadow:0 20px 60px rgba(0,0,0,0.5);text-align:center}
+.logo{width:56px;height:56px;background:linear-gradient(135deg,#01d3ff,#0099cc);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff;margin:0 auto 20px;box-shadow:0 0 30px rgba(1,211,255,0.15)}
+h1{font-size:22px;font-weight:700;margin-bottom:4px}
+.sub{color:#8892a4;font-size:14px;margin-bottom:28px}
+.links{display:flex;flex-direction:column;gap:12px}
+.links a{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 20px;border-radius:10px;font-size:15px;font-weight:600;text-decoration:none;transition:all 0.2s}
+.links a.primary{background:linear-gradient(135deg,#01d3ff,#0099cc);color:#fff}
+.links a.primary:hover{opacity:0.9;box-shadow:0 0 20px rgba(1,211,255,0.2)}
+.links a.secondary{background:#1a1f2b;border:1px solid #2a3142;color:#e2e8f0}
+.links a.secondary:hover{background:#202635;border-color:#01d3ff}
+.footer{margin-top:24px;font-size:12px;color:#8892a4}
+</style>
+</head>
+<body>
+<div class="card">
+<div class="logo">OS</div>
+<h1>Oklahoma State Roleplay</h1>
+<p class="sub">Bot Management Portal</p>
+<div class="links">
+<a href="/appeal" class="primary">Submit Ban Appeal</a>
+<a href="/dashboard" class="secondary">Staff Dashboard</a>
+</div>
+<div class="footer">OSRP Management Bot</div>
+</div>
+</body>
+</html>"""
+
+
+async def root_handler(request):
+    return web.Response(text=ROOT_HTML, content_type="text/html")
+
+
 async def start_web_server():
     app = web.Application()
+    
+    # Root & health (always work, no bot dependency)
+    app.router.add_get("/", root_handler)
+    async def healthz(request):
+        return web.Response(text="ok")
+    app.router.add_get("/healthz", healthz)
     
     # Serve static pages and API
     app.router.add_get("/appeal", handle_appeal_page)
@@ -2655,13 +2696,6 @@ async def start_web_server():
     app.router.add_get("/api/dashboard/notes", handle_dashboard_notes)
     app.router.add_post("/api/dashboard/notes/add", handle_dashboard_notes_add)
     app.router.add_post("/api/dashboard/notes/delete", handle_dashboard_notes_delete)
-    
-    # Health check
-    async def healthz(request):
-        if bot.is_closed():
-            return web.Response(text="bot disconnected", status=503)
-        return web.Response(text="ok")
-    app.router.add_get("/healthz", healthz)
     
     runner = web.AppRunner(app)
     await runner.setup()
@@ -3103,6 +3137,13 @@ async def blacklist(ctx, action: str = None, user_id: str = None):
 # â”€â”€ Main â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async def main():
+    # Start web server BEFORE connecting to Discord
+    # This ensures Railway health check passes immediately
+    web_task = asyncio.create_task(start_web_server())
+    
+    # Give the web server a moment to bind
+    await asyncio.sleep(0.5)
+    
     async with bot:
         await bot.start(TOKEN)
 
