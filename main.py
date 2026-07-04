@@ -2138,8 +2138,17 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                 const res = await fetch(path, { ...options, headers });
                 if (res.status === 401) {
                     localStorage.removeItem('dashboard_key');
+                    const errEl = document.getElementById('login-error');
+                    errEl.textContent = 'Invalid dashboard key. Check that DASHBOARD_KEY env var matches.';
+                    errEl.classList.remove('hidden');
                     document.getElementById('login-page').classList.remove('hidden');
                     document.getElementById('dashboard-page').classList.add('hidden');
+                    return null;
+                }
+                if (res.status === 503) {
+                    const errEl = document.getElementById('login-error');
+                    errEl.textContent = 'Dashboard not configured - set DASHBOARD_KEY on Railway.';
+                    errEl.classList.remove('hidden');
                     return null;
                 }
                 return res.json();
