@@ -2280,7 +2280,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                     '<p>' + escapeHtml(n.content) + '</p>' +
                     '<div class="meta">' + escapeHtml(author) + ' &middot; ' + formatDate(n.timestamp) + '</div>' +
                     '</div>' +
-                    '<button class="note-delete" onclick="deleteNote(\'' + escapeHtml(n.id) + '\')">&times;</button>' +
+                    '<button class="note-delete" onclick="deleteNote(\\'' + escapeHtml(n.id) + '\\')">&times;</button>' +
                     '</div>';
             }).join('');
         }
@@ -2329,7 +2329,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                     '<div class="uid">' + escapeHtml(u.user_id) + '</div>' +
                 '</div>' +
                 '<div class="user-meta">' +
-                    '<button class="btn btn-danger btn-sm" onclick="removeBlacklist(\'' + escapeHtml(u.user_id) + '\')">Remove</button>' +
+                    '<button class="btn btn-danger btn-sm" onclick="removeBlacklist(\\'' + escapeHtml(u.user_id) + '\\')">Remove</button>' +
                     '<div class="added-date">' + formatDate(u.added_at) + '</div>' +
                 '</div>' +
                 '</div>';
