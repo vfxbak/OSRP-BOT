@@ -875,7 +875,7 @@ async def handle_ban_appeal_dm(user_id, punishment_type: str, total_points: int)
             f"Your ban appeal code for **Oklahoma State Roleplay:**\n\n"
             f"`{{ {token} }}`\n\n"
             f"Go to {appeal_url} and enter this code to submit your appeal.\n\n"
-            f"This code is unique to you, sharing it can result in a permanent ban without appeal from the server."
+            f"**This code is unique to you, sharing it can result in a permanent ban\n_ _\nwithout appeal from the server.**"
         )
         await user.send(msg)
         print(f"[APPEAL] DM sent to {user_id} with appeal token {token}")
@@ -2908,7 +2908,7 @@ async def sampleappeal(ctx):
             f"Your ban appeal code for **Oklahoma State Roleplay:**\n\n"
             f"`{{ {token} }}`\n\n"
             f"Go to {appeal_url} and enter this code to submit your appeal.\n\n"
-            f"This code is unique to you, sharing it can result in a permanent ban without appeal from the server."
+            f"**This code is unique to you, sharing it can result in a permanent ban\n_ _\nwithout appeal from the server.**"
         )
         await ctx.author.send(msg)
         await ctx.send(f"Test appeal code sent to your DMs! Check your DMs.")
@@ -3018,7 +3018,7 @@ async def resendappeallink(ctx, member: discord.Member):
             f"Your ban appeal code for **Oklahoma State Roleplay:**\n\n"
             f"`{{ {code} }}`\n\n"
             f"Go to {appeal_url} and enter this code to submit your appeal.\n\n"
-            f"This code is unique to you, sharing it can result in a permanent ban without appeal from the server."
+            f"**This code is unique to you, sharing it can result in a permanent ban\n_ _\nwithout appeal from the server.**"
         )
         await user.send(msg)
 
