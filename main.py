@@ -953,10 +953,10 @@ APPEAL_HTML = """<!DOCTYPE html>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
-            --bg-primary: #0b0e14;
-            --bg-secondary: #131821;
-            --bg-card: #1a1f2b;
-            --border: #2a3142;
+            --bg-primary: #0a0c14;
+            --bg-secondary: #111624;
+            --bg-card: #171d2e;
+            --border: #252d44;
             --text-primary: #e2e8f0;
             --text-secondary: #8892a4;
             --accent: #01d3ff;
@@ -968,7 +968,7 @@ APPEAL_HTML = """<!DOCTYPE html>
         }
         body {
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: var(--bg-primary);
+            background: radial-gradient(ellipse at 50% 0%, rgba(1, 211, 255, 0.05) 0%, transparent 60%), var(--bg-primary);
             color: var(--text-primary);
             min-height: 100vh;
             display: flex;
@@ -1617,11 +1617,11 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
-            --bg-primary: #0b0e14;
-            --bg-secondary: #131821;
-            --bg-card: #1a1f2b;
-            --bg-card-hover: #202635;
-            --border: #2a3142;
+            --bg-primary: #0a0c14;
+            --bg-secondary: #111624;
+            --bg-card: #171d2e;
+            --bg-card-hover: #1c2339;
+            --border: #252d44;
             --text-primary: #e2e8f0;
             --text-secondary: #8892a4;
             --accent: #01d3ff;
@@ -1634,7 +1634,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         }
         body {
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: var(--bg-primary);
+            background: radial-gradient(ellipse at 50% 0%, rgba(1, 211, 255, 0.05) 0%, transparent 60%), var(--bg-primary);
             color: var(--text-primary);
             min-height: 100vh;
         }
@@ -1643,7 +1643,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             display: flex;
             align-items: center;
             justify-content: center;
-            background: radial-gradient(ellipse at 50% 0%, rgba(1, 211, 255, 0.06) 0%, transparent 60%);
         }
         .login-card {
             background: var(--bg-secondary);
