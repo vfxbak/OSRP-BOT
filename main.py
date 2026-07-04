@@ -76,6 +76,7 @@ APPEALS_FILE = os.path.join(os.path.dirname(__file__), "appeals.json")
 KICKED_FILE = os.path.join(os.path.dirname(__file__), "kicked.json")
 APPEAL_TOKENS_FILE = os.path.join(os.path.dirname(__file__), "appeal_tokens.json")
 BLACKLIST_FILE = os.path.join(os.path.dirname(__file__), "blacklist.json")
+NOTES_FILE = os.path.join(os.path.dirname(__file__), "notes.json")
 
 last_command_channel: dict[str, int] = {}
 processed_cases: set[str] = set()
@@ -100,6 +101,7 @@ appeals_db = load_json(APPEALS_FILE)
 kicked_db = load_json(KICKED_FILE)
 appeal_tokens_db = load_json(APPEAL_TOKENS_FILE)
 blacklist_db = load_json(BLACKLIST_FILE)
+notes_db = load_json(NOTES_FILE)
 
 
 MANAGEMENT_ROLE_IDS = {MANAGEMENT_ROLE_ID, DIRECTORSHIP_ROLE_ID}
@@ -1425,173 +1427,783 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OSRP Appeal Dashboard</title>
+    <title>OSRP Staff Dashboard</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
-            color: #c9d1d9;
-            min-height: 100vh; padding: 20px;
+        :root {
+            --bg-primary: #0b0e14;
+            --bg-secondary: #131821;
+            --bg-card: #1a1f2b;
+            --bg-card-hover: #202635;
+            --border: #2a3142;
+            --text-primary: #e2e8f0;
+            --text-secondary: #8892a4;
+            --accent: #01d3ff;
+            --accent-glow: rgba(1, 211, 255, 0.15);
+            --green: #3fb950;
+            --red: #f85149;
+            --orange: #f0883e;
+            --purple: #a371f7;
+            --radius: 10px;
         }
-        .container { max-width: 800px; margin: 0 auto; background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 40px; }
-        h1 { color: #01d3ff; margin-bottom: 8px; font-size: 24px; }
-        .subtitle { color: #8b949e; margin-bottom: 24px; font-size: 14px; }
-        .section { background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
-        .section h2 { color: #01d3ff; font-size: 18px; margin-bottom: 16px; }
-        label { font-size: 13px; font-weight: 600; color: #c9d1d9; display: block; margin-bottom: 4px; }
-        input, select { background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 10px 14px; color: #c9d1d9; font-size: 14px; width: 100%; margin-bottom: 12px; }
-        input:focus { outline: none; border-color: #01d3ff; }
-        button { background: #01d3ff; color: #0d1117; border: none; border-radius: 6px; padding: 10px 20px; font-size: 14px; font-weight: 700; cursor: pointer; }
-        button:hover { background: #00b8e6; }
-        button.danger { background: #f85149; }
-        button.danger:hover { background: #da3633; }
-        button.secondary { background: #30363d; color: #c9d1d9; }
-        button.secondary:hover { background: #484f58; }
-        .error { color: #f85149; font-size: 13px; margin-top: 4px; }
-        .success { color: #3fb950; font-size: 13px; margin-top: 4px; }
-        .hidden { display: none; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+        .login-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(ellipse at 50% 0%, rgba(1, 211, 255, 0.06) 0%, transparent 60%);
+        }
+        .login-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 48px 40px;
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        .login-card .logo {
+            width: 64px; height: 64px;
+            background: linear-gradient(135deg, var(--accent), #0099cc);
+            border-radius: 16px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 28px; font-weight: 800; color: #fff;
+            margin: 0 auto 20px;
+            box-shadow: 0 0 30px var(--accent-glow);
+        }
+        .login-card h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+        .login-card p { color: var(--text-secondary); font-size: 14px; margin-bottom: 28px; }
+        .login-card input {
+            width: 100%;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 16px;
+            color: var(--text-primary);
+            font-size: 14px;
+            margin-bottom: 16px;
+            transition: border-color 0.2s;
+        }
+        .login-card input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+        .login-card button {
+            width: 100%;
+            background: linear-gradient(135deg, var(--accent), #0099cc);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+        .login-card button:hover { opacity: 0.9; }
+        .login-card button:active { transform: scale(0.98); }
+
+        /* Dashboard layout */
+        .dashboard {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 20px 24px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-bottom: 24px;
+        }
+        .header-icon {
+            width: 48px; height: 48px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--accent), #0099cc);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px; font-weight: 800; color: #fff;
+            flex-shrink: 0;
+        }
+        .header-info { flex: 1; }
+        .header-info h1 { font-size: 20px; font-weight: 700; }
+        .header-info .subtitle { color: var(--text-secondary); font-size: 13px; margin-top: 2px; }
+        .header-actions { display: flex; gap: 8px; }
+        .header-actions button {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 16px;
+            color: var(--text-primary);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .header-actions button:hover { background: var(--bg-card-hover); }
+        .header-actions button.danger { color: var(--red); }
+        .header-actions button.danger:hover { background: rgba(248, 81, 73, 0.1); }
+
+        /* Stats row */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 3px;
+        }
+        .stat-card.total::before { background: var(--accent); }
+        .stat-card.pending::before { background: var(--orange); }
+        .stat-card.approved::before { background: var(--green); }
+        .stat-card.denied::before { background: var(--red); }
+        .stat-card .num { font-size: 32px; font-weight: 800; }
+        .stat-card .num.accent { color: var(--accent); }
+        .stat-card .num.orange { color: var(--orange); }
+        .stat-card .num.green { color: var(--green); }
+        .stat-card .num.red { color: var(--red); }
+        .stat-card .label { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+        .stat-card .sub { font-size: 11px; color: var(--text-secondary); margin-top: 8px; }
+
+        /* Grid layout for sections */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        .grid-full { grid-column: 1 / -1; }
+
+        /* Section cards */
+        .section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+        .section-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .section-header h2 { font-size: 15px; font-weight: 700; }
+        .section-header .badge {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 2px 10px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        .section-body { padding: 20px; }
+
+        /* Form elements */
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.3px; }
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+        .form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+        .form-group textarea { resize: vertical; min-height: 80px; }
+        .form-row { display: flex; gap: 10px; }
+        .form-row input { flex: 1; }
+        .btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 20px;
+            color: var(--text-primary);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            font-family: inherit;
+        }
+        .btn:hover { background: var(--bg-card-hover); }
+        .btn:active { transform: scale(0.98); }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), #0099cc);
+            color: #fff;
+            border: none;
+        }
+        .btn-primary:hover { opacity: 0.9; box-shadow: 0 0 20px var(--accent-glow); }
+        .btn-danger { color: var(--red); }
+        .btn-danger:hover { background: rgba(248, 81, 73, 0.1); border-color: rgba(248, 81, 73, 0.3); }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Tables */
+        .table-wrap { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #30363d; }
-        th { color: #8b949e; font-weight: 600; }
-        .login-box { max-width: 400px; margin: 40px auto; text-align: center; }
-        .stats { display: flex; gap: 16px; margin-bottom: 20px; }
-        .stat-card { background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 16px; flex: 1; text-align: center; }
-        .stat-card .num { font-size: 28px; font-weight: 700; color: #01d3ff; }
-        .stat-card .label { font-size: 11px; color: #8b949e; text-transform: uppercase; margin-top: 4px; }
+        th { text-align: left; padding: 10px 16px; font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); }
+        td { padding: 10px 16px; border-bottom: 1px solid var(--border); }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: rgba(255,255,255,0.02); }
+        code { background: var(--bg-primary); padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status-badge.pending { background: rgba(240, 136, 62, 0.15); color: var(--orange); }
+        .status-badge.approved { background: rgba(63, 185, 80, 0.15); color: var(--green); }
+        .status-badge.denied { background: rgba(248, 81, 73, 0.15); color: var(--red); }
+
+        /* Notes */
+        .note-item {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px 16px;
+            margin-bottom: 10px;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+        .note-item:last-child { margin-bottom: 0; }
+        .note-content { flex: 1; }
+        .note-content p { font-size: 13px; line-height: 1.5; word-break: break-word; }
+        .note-content .meta { font-size: 11px; color: var(--text-secondary); margin-top: 6px; }
+        .note-delete {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 16px;
+            padding: 4px;
+            border-radius: 4px;
+            transition: all 0.2s;
+            line-height: 1;
+        }
+        .note-delete:hover { background: rgba(248, 81, 73, 0.15); color: var(--red); }
+
+        /* Alerts */
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .alert-error { background: rgba(248, 81, 73, 0.1); border: 1px solid rgba(248, 81, 73, 0.3); color: var(--red); }
+        .alert-success { background: rgba(63, 185, 80, 0.1); border: 1px solid rgba(63, 185, 80, 0.3); color: var(--green); }
+        .hidden { display: none !important; }
+        .empty-state { text-align: center; padding: 32px 16px; color: var(--text-secondary); font-size: 13px; }
+        
+        /* Blacklist user cards */
+        .user-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            margin-bottom: 10px;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .user-card:last-child { margin-bottom: 0; }
+        .user-card:hover { border-color: var(--accent); background: rgba(1, 211, 255, 0.03); }
+        .user-avatar {
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            background: var(--bg-card);
+            flex-shrink: 0;
+            overflow: hidden;
+            border: 2px solid var(--border);
+        }
+        .user-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .user-avatar .placeholder {
+            width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; font-weight: 700; color: var(--text-secondary);
+            background: var(--bg-card);
+        }
+        .user-info { flex: 1; min-width: 0; }
+        .user-info .name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .user-info .name .tag { color: var(--text-secondary); font-weight: 400; }
+        .user-info .uid { font-size: 11px; color: var(--text-secondary); font-family: 'Consolas', monospace; margin-top: 2px; }
+        .user-meta { text-align: right; flex-shrink: 0; }
+        .user-meta .added { font-size: 11px; color: var(--text-secondary); }
+        .user-meta .added-date { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
+        /* Tabs */
+        .tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+        .tab {
+            background: transparent;
+            border: none;
+            padding: 8px 16px;
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .tab:hover { background: var(--bg-card); }
+        .tab.active { background: var(--accent); color: #fff; }
+
+        /* Refresh indicator */
+        .refreshing { opacity: 0.5; pointer-events: none; }
+
+        /* Loading skeleton */
+        .skeleton {
+            background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-card-hover) 50%, var(--bg-card) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 6px;
+        }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        .skeleton-text { height: 14px; margin-bottom: 8px; }
+        .skeleton-text:last-child { width: 60%; }
+
+        /* Search */
+        .search-box {
+            position: relative;
+        }
+        .search-box input {
+            padding-left: 36px;
+        }
+        .search-box .icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+            font-size: 14px;
+            pointer-events: none;
+        }
+
+        @media (max-width: 900px) {
+            .grid-2 { grid-template-columns: 1fr; }
+            .dashboard { padding: 16px; }
+            .header { flex-wrap: wrap; }
+            .stats { grid-template-columns: repeat(2, 1fr); }
+        }
     </style>
 </head>
 <body>
-    <div class="container" id="login-page">
-        <h1>OSRP Appeal Dashboard</h1>
-        <p class="subtitle">Staff Panel - Manage Ban Appeals</p>
-        <div class="login-box section">
-            <h2>Login</h2>
-            <input type="password" id="login-key" placeholder="Enter dashboard key">
-            <button id="login-btn" style="width:100%;">Login</button>
-            <div id="login-error" class="error hidden" style="margin-top:12px;"></div>
+    <!-- Login Page -->
+    <div class="login-page" id="login-page">
+        <div class="login-card">
+            <div class="logo">OS</div>
+            <h1>Staff Dashboard</h1>
+            <p>Oklahoma State Roleplay — Ban Appeal Management</p>
+            <input type="password" id="login-key" placeholder="Enter dashboard key" autocomplete="off">
+            <div id="login-error" class="alert alert-error hidden"></div>
+            <button id="login-btn">Sign In</button>
         </div>
     </div>
 
-    <div class="container hidden" id="dashboard-page">
-        <h1>OSRP Appeal Dashboard</h1>
-        <p class="subtitle">Staff Panel - Manage Ban Appeals</p>
-        <button id="logout-btn" class="secondary" style="float:right;margin-top:-48px;">Logout</button>
-        
-        <div class="stats" id="stats"></div>
-        
-        <div class="section">
-            <h2>Blacklist User</h2>
-            <label>Discord User ID</label>
-            <input type="text" id="blacklist-user-id" placeholder="Enter Discord user ID">
-            <button id="blacklist-add-btn">Add to Blacklist</button>
-            <div id="blacklist-add-result"></div>
+    <!-- Dashboard -->
+    <div class="dashboard hidden" id="dashboard-page">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-icon" id="header-icon">OS</div>
+            <div class="header-info">
+                <h1 id="guild-name">OSRP Staff Dashboard</h1>
+                <div class="subtitle" id="guild-subtitle">Loading server info...</div>
+            </div>
+            <div class="header-actions">
+                <button id="refresh-btn">Refresh</button>
+                <button id="logout-btn" class="danger">Sign Out</button>
+            </div>
         </div>
-        
-        <div class="section">
-            <h2>Blacklisted Users</h2>
-            <div id="blacklist-table"></div>
+
+        <!-- Stats -->
+        <div class="stats" id="stats">
+            <div class="stat-card total"><div class="num accent" id="stat-total">--</div><div class="label">Total Appeals</div></div>
+            <div class="stat-card pending"><div class="num orange" id="stat-pending">--</div><div class="label">Pending</div></div>
+            <div class="stat-card approved"><div class="num green" id="stat-approved">--</div><div class="label">Approved</div></div>
+            <div class="stat-card denied"><div class="num red" id="stat-denied">--</div><div class="label">Denied</div></div>
+        </div>
+
+        <div class="grid-2">
+            <!-- Appeals Section -->
+            <div class="section grid-full">
+                <div class="section-header">
+                    <h2>Recent Appeals</h2>
+                    <span class="badge" id="appeals-count">0</span>
+                </div>
+                <div class="section-body">
+                    <div class="tabs">
+                        <button class="tab active" data-filter="all">All</button>
+                        <button class="tab" data-filter="pending">Pending</button>
+                        <button class="tab" data-filter="approved">Approved</button>
+                        <button class="tab" data-filter="denied">Denied</button>
+                    </div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Reason</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody id="appeals-table-body">
+                                <tr><td colspan="4"><div class="empty-state">Loading appeals...</div></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Staff Notes -->
+            <div class="section">
+                <div class="section-header">
+                    <h2>Staff Notes</h2>
+                    <span class="badge" id="notes-count">0</span>
+                </div>
+                <div class="section-body">
+                    <div class="form-row" style="margin-bottom:16px;">
+                        <textarea id="note-input" placeholder="Write a note..." rows="2" style="flex:1;"></textarea>
+                        <button id="note-add-btn" class="btn btn-primary" style="align-self:flex-end;">Add Note</button>
+                    </div>
+                    <div id="notes-list">
+                        <div class="empty-state">No notes yet.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Blacklist -->
+            <div class="section">
+                <div class="section-header">
+                    <h2>Blacklist</h2>
+                    <span class="badge" id="blacklist-count">0</span>
+                </div>
+                <div class="section-body">
+                    <div class="form-row" style="margin-bottom:16px;">
+                        <input type="text" id="blacklist-user-id" placeholder="Discord user ID">
+                        <button id="blacklist-add-btn" class="btn btn-primary">Add</button>
+                    </div>
+                    <div id="blacklist-result" class="hidden"></div>
+                    <div id="blacklist-table">
+                        <div class="empty-state">No blacklisted users.</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
         const API_KEY = () => localStorage.getItem('dashboard_key');
-        
-        document.getElementById('login-btn').addEventListener('click', function() {
+        let currentFilter = 'all';
+
+        // ========== UTILITY ==========
+        function showAlert(id, msg, type) {
+            const el = document.getElementById(id);
+            el.className = 'alert alert-' + type;
+            el.innerHTML = msg;
+            el.classList.remove('hidden');
+            setTimeout(() => el.classList.add('hidden'), 4000);
+        }
+        function escapeHtml(text) {
+            const d = document.createElement('div');
+            d.textContent = text;
+            return d.innerHTML;
+        }
+        function formatDate(iso) {
+            if (!iso) return '--';
+            const d = new Date(iso);
+            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+
+        // ========== API CLIENT ==========
+        async function apiFetch(path, options = {}) {
+            const key = API_KEY();
+            const headers = { 'Content-Type': 'application/json', 'X-Admin-Key': key };
+            try {
+                const res = await fetch(path, { ...options, headers });
+                if (res.status === 401) {
+                    localStorage.removeItem('dashboard_key');
+                    document.getElementById('login-page').classList.remove('hidden');
+                    document.getElementById('dashboard-page').classList.add('hidden');
+                    return null;
+                }
+                return res.json();
+            } catch (e) {
+                return { error: 'Network error' };
+            }
+        }
+
+        // ========== LOGIN ==========
+        document.getElementById('login-btn').addEventListener('click', doLogin);
+        document.getElementById('login-key').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') doLogin();
+        });
+
+        async function doLogin() {
             const key = document.getElementById('login-key').value.trim();
             if (!key) return;
             localStorage.setItem('dashboard_key', key);
-            loadDashboard();
-        });
-        
-        document.getElementById('login-key').addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') document.getElementById('login-btn').click();
-        });
-        
+            await loadDashboard();
+        }
+
         document.getElementById('logout-btn').addEventListener('click', function() {
             localStorage.removeItem('dashboard_key');
             document.getElementById('login-page').classList.remove('hidden');
             document.getElementById('dashboard-page').classList.add('hidden');
         });
-        
-        function showError(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.classList.remove('hidden'); setTimeout(() => el.classList.add('hidden'), 3000); }
-        function showSuccess(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.style.color = '#3fb950'; el.classList.remove('hidden'); setTimeout(() => el.classList.add('hidden'), 3000); }
-        
-        async function apiFetch(path, options = {}) {
-            const key = API_KEY();
-            const headers = { 'Content-Type': 'application/json', 'X-Admin-Key': key };
-            const res = await fetch(path, { ...options, headers });
-            if (res.status === 401) {
-                localStorage.removeItem('dashboard_key');
-                document.getElementById('login-page').classList.remove('hidden');
-                document.getElementById('dashboard-page').classList.add('hidden');
-                return null;
-            }
-            return res.json();
-        }
-        
+
+        document.getElementById('refresh-btn').addEventListener('click', function() {
+            loadDashboard();
+        });
+
+        // ========== MAIN LOAD ==========
         async function loadDashboard() {
-            const data = await apiFetch('/api/dashboard/data');
-            if (!data) return;
-            
-            if (data.error) {
-                document.getElementById('login-error').textContent = data.error;
-                document.getElementById('login-error').classList.remove('hidden');
+            document.getElementById('dashboard-page').classList.add('refreshing');
+
+            const [guild, data] = await Promise.all([
+                apiFetch('/api/dashboard/guild-info'),
+                apiFetch('/api/dashboard/data')
+            ]);
+
+            if (!data || data.error) {
+                if (data && data.error) {
+                    document.getElementById('login-error').textContent = data.error;
+                    document.getElementById('login-error').classList.remove('hidden');
+                }
                 localStorage.removeItem('dashboard_key');
+                document.getElementById('dashboard-page').classList.remove('refreshing');
                 return;
             }
-            
+
             document.getElementById('login-page').classList.add('hidden');
             document.getElementById('dashboard-page').classList.remove('hidden');
-            
-            document.getElementById('stats').innerHTML = `
-                <div class="stat-card"><div class="num">${data.total_appeals}</div><div class="label">Total Appeals</div></div>
-                <div class="stat-card"><div class="num">${data.pending_appeals}</div><div class="label">Pending</div></div>
-                <div class="stat-card"><div class="num">${data.blacklist_count}</div><div class="label">Blacklisted</div></div>
-            `;
-            
-            loadBlacklist();
+
+            // Guild info
+            if (guild && !guild.error) {
+                document.getElementById('guild-name').textContent = guild.name + ' — Staff Dashboard';
+                document.getElementById('guild-subtitle').textContent = guild.member_count + ' members';
+                if (guild.icon_url) {
+                    const img = document.getElementById('header-icon');
+                    img.style.background = 'transparent';
+                    img.style.padding = '0';
+                    img.innerHTML = '<img src="' + escapeHtml(guild.icon_url) + '" alt="" style="width:48px;height:48px;border-radius:12px;">';
+                }
+            }
+
+            // Stats
+            document.getElementById('stat-total').textContent = data.total_appeals;
+            document.getElementById('stat-pending').textContent = data.pending_appeals;
+            document.getElementById('stat-approved').textContent = data.approved_appeals;
+            document.getElementById('stat-denied').textContent = data.denied_appeals;
+            document.getElementById('appeals-count').textContent = data.total_appeals;
+
+            await Promise.all([
+                loadAppeals(),
+                loadNotes(),
+                loadBlacklist()
+            ]);
+
+            document.getElementById('dashboard-page').classList.remove('refreshing');
         }
-        
+
+        // ========== APPEALS ==========
+        async function loadAppeals() {
+            const data = await apiFetch('/api/dashboard/appeals');
+            if (!data || !data.appeals) return;
+            renderAppeals(data.appeals);
+        }
+
+        function renderAppeals(appeals) {
+            const tbody = document.getElementById('appeals-table-body');
+            const filtered = currentFilter === 'all'
+                ? appeals
+                : appeals.filter(a => a.status === currentFilter);
+            
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4"><div class="empty-state">No ' + (currentFilter === 'all' ? '' : currentFilter + ' ') + 'appeals found.</div></td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(a => {
+                const statusClass = a.status === 'pending' ? 'pending' : a.status === 'approved' ? 'approved' : 'denied';
+                return '<tr>' +
+                    '<td><strong>' + escapeHtml(a.discord_username || 'Unknown') + '</strong><br><code>' + escapeHtml(a.discord_id || '') + '</code></td>' +
+                    '<td>' + escapeHtml((a.why_banned || a.ban_reason || '').substring(0, 60)) + (a.why_banned && a.why_banned.length > 60 ? '...' : '') + '</td>' +
+                    '<td><span class="status-badge ' + statusClass + '">' + a.status + '</span></td>' +
+                    '<td>' + formatDate(a.submitted_at) + '</td>' +
+                    '</tr>';
+            }).join('');
+        }
+
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                currentFilter = this.dataset.filter;
+                loadAppeals();
+            });
+        });
+
+        // ========== NOTES ==========
+        async function loadNotes() {
+            const data = await apiFetch('/api/dashboard/notes');
+            if (!data) return;
+            const list = document.getElementById('notes-list');
+            document.getElementById('notes-count').textContent = data.notes ? data.notes.length : 0;
+            
+            if (!data.notes || data.notes.length === 0) {
+                list.innerHTML = '<div class="empty-state">No notes yet.</div>';
+                return;
+            }
+
+            list.innerHTML = data.notes.slice().reverse().map(n => {
+                const author = n.author || 'Staff';
+                return '<div class="note-item">' +
+                    '<div class="note-content">' +
+                    '<p>' + escapeHtml(n.content) + '</p>' +
+                    '<div class="meta">' + escapeHtml(author) + ' &middot; ' + formatDate(n.timestamp) + '</div>' +
+                    '</div>' +
+                    '<button class="note-delete" onclick="deleteNote(\'' + escapeHtml(n.id) + '\')">&times;</button>' +
+                    '</div>';
+            }).join('');
+        }
+
+        async function deleteNote(id) {
+            const data = await apiFetch('/api/dashboard/notes/delete', {
+                method: 'POST',
+                body: JSON.stringify({ id: id })
+            });
+            if (data && data.success) loadNotes();
+        }
+
+        document.getElementById('note-add-btn').addEventListener('click', async function() {
+            const input = document.getElementById('note-input');
+            const content = input.value.trim();
+            if (!content) return;
+            const data = await apiFetch('/api/dashboard/notes/add', {
+                method: 'POST',
+                body: JSON.stringify({ content: content })
+            });
+            if (data && data.success) {
+                input.value = '';
+                loadNotes();
+            }
+        });
+
+        document.getElementById('note-input').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                document.getElementById('note-add-btn').click();
+            }
+        });
+
+        // ========== BLACKLIST ==========
+        function renderUserCard(u) {
+            const avatarHtml = u.avatar_url
+                ? '<img src="' + escapeHtml(u.avatar_url) + '" alt="" loading="lazy">'
+                : '<div class="placeholder">' + (u.username ? u.username[0].toUpperCase() : '?') + '</div>';
+            const nameHtml = u.username && u.username !== u.user_id
+                ? '<span class="name">' + escapeHtml(u.username) + '</span>'
+                : '<span class="name"><code>' + escapeHtml(u.user_id) + '</code></span>';
+            return '<div class="user-card">' +
+                '<div class="user-avatar">' + avatarHtml + '</div>' +
+                '<div class="user-info">' +
+                    nameHtml +
+                    '<div class="uid">' + escapeHtml(u.user_id) + '</div>' +
+                '</div>' +
+                '<div class="user-meta">' +
+                    '<button class="btn btn-danger btn-sm" onclick="removeBlacklist(\'' + escapeHtml(u.user_id) + '\')">Remove</button>' +
+                    '<div class="added-date">' + formatDate(u.added_at) + '</div>' +
+                '</div>' +
+                '</div>';
+        }
+
         async function loadBlacklist() {
             const data = await apiFetch('/api/dashboard/blacklist');
             if (!data) return;
             const table = document.getElementById('blacklist-table');
-            if (data.users.length === 0) {
-                table.innerHTML = '<p style="color:#8b949e;">No blacklisted users.</p>';
+            document.getElementById('blacklist-count').textContent = data.users ? data.users.length : 0;
+            
+            if (!data.users || data.users.length === 0) {
+                table.innerHTML = '<div class="empty-state">No blacklisted users.</div>';
                 return;
             }
-            let html = '<table><tr><th>User ID</th><th>Added By</th><th>Date Added</th><th>Action</th></tr>';
-            data.users.forEach(u => {
-                html += `<tr><td><code>${u.user_id}</code></td><td><code>${u.added_by}</code></td><td>${u.added_at}</td><td><button class="danger" onclick="removeBlacklist('${u.user_id}')">Remove</button></td></tr>`;
-            });
-            html += '</table>';
-            table.innerHTML = html;
+
+            table.innerHTML = data.users.map(u => renderUserCard(u)).join('');
         }
-        
+
         async function removeBlacklist(userId) {
-            const data = await apiFetch('/api/dashboard/blacklist/remove', { method: 'POST', body: JSON.stringify({ user_id: userId }) });
+            const data = await apiFetch('/api/dashboard/blacklist/remove', {
+                method: 'POST',
+                body: JSON.stringify({ user_id: userId })
+            });
             if (data && data.success) loadBlacklist();
         }
-        
+
         document.getElementById('blacklist-add-btn').addEventListener('click', async function() {
-            const userId = document.getElementById('blacklist-user-id').value.trim();
+            const input = document.getElementById('blacklist-user-id');
+            const userId = input.value.trim();
             if (!userId) return;
-            const data = await apiFetch('/api/dashboard/blacklist/add', { method: 'POST', body: JSON.stringify({ user_id: userId }) });
+            const result = document.getElementById('blacklist-result');
+            const btn = this;
+            btn.disabled = true;
+            btn.textContent = 'Adding...';
+            const data = await apiFetch('/api/dashboard/blacklist/add', {
+                method: 'POST',
+                body: JSON.stringify({ user_id: userId })
+            });
+            btn.disabled = false;
+            btn.textContent = 'Add';
             if (data && data.success) {
-                document.getElementById('blacklist-user-id').value = '';
+                input.value = '';
+                // Show a rich success message with the user info
+                if (data.user && data.user.username) {
+                    const avatar = data.user.avatar_url
+                        ? '<img src="' + escapeHtml(data.user.avatar_url) + '" style="width:20px;height:20px;border-radius:50%;vertical-align:middle;margin-right:6px;">'
+                        : '';
+                    showAlert('blacklist-result', avatar + ' <strong>' + escapeHtml(data.user.username) + '</strong> blacklisted.', 'success');
+                } else {
+                    showAlert('blacklist-result', 'User blacklisted successfully.', 'success');
+                }
                 loadBlacklist();
-                showSuccess('blacklist-add-result', 'User blacklisted successfully.');
             } else if (data && data.error) {
-                showError('blacklist-add-result', data.error);
+                showAlert('blacklist-result', data.error, 'error');
             }
         });
-        
+
         document.getElementById('blacklist-user-id').addEventListener('keydown', function(e) {
             if (e.key === 'Enter') document.getElementById('blacklist-add-btn').click();
         });
-        
-        // Auto-login if key exists
+
+        // ========== AUTO-LOGIN ==========
         if (localStorage.getItem('dashboard_key')) loadDashboard();
     </script>
 </body>
@@ -1619,11 +2231,15 @@ async def handle_dashboard_data(request):
     
     total = len(appeals_db)
     pending = len([a for a in appeals_db.values() if a.get("status") == "pending"])
+    approved = len([a for a in appeals_db.values() if a.get("status") == "approved"])
+    denied = len([a for a in appeals_db.values() if a.get("status") == "denied"])
     blacklist_count = len(blacklist_db)
     
     return web.json_response({
         "total_appeals": total,
         "pending_appeals": pending,
+        "approved_appeals": approved,
+        "denied_appeals": denied,
         "blacklist_count": blacklist_count
     })
 
@@ -1633,7 +2249,30 @@ async def handle_dashboard_blacklist(request):
     if err:
         return err
     
-    users = [{"user_id": uid, "added_by": d.get("added_by", ""), "added_at": d.get("added_at", "")} for uid, d in blacklist_db.items()]
+    async def enrich_user(uid, data):
+        entry = {
+            "user_id": uid,
+            "added_by": data.get("added_by", ""),
+            "added_at": data.get("added_at", ""),
+            "username": data.get("username", None),
+            "avatar_url": data.get("avatar_url", None),
+        }
+        # If no cached info, try to fetch it
+        if not entry["username"]:
+            try:
+                user = await bot.fetch_user(int(uid))
+                entry["username"] = str(user)
+                entry["avatar_url"] = str(user.display_avatar.url)
+                # cache it for next time
+                blacklist_db[uid]["username"] = entry["username"]
+                blacklist_db[uid]["avatar_url"] = entry["avatar_url"]
+                save_json(BLACKLIST_FILE, blacklist_db)
+            except Exception:
+                entry["username"] = uid
+        return entry
+    
+    tasks = [enrich_user(uid, d) for uid, d in blacklist_db.items()]
+    users = await asyncio.gather(*tasks) if tasks else []
     return web.json_response({"users": users})
 
 
@@ -1648,14 +2287,24 @@ async def handle_dashboard_blacklist_add(request):
         if not user_id:
             return web.json_response({"error": "User ID required"}, status=400)
         
-        blacklist_db[user_id] = {
+        entry = {
             "added_by": "dashboard",
-            "added_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
+            "added_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         }
+        
+        # Fetch Discord user info for a cooler display
+        try:
+            user = await bot.fetch_user(int(user_id))
+            entry["username"] = str(user)
+            entry["avatar_url"] = str(user.display_avatar.url)
+        except Exception:
+            entry["username"] = user_id
+        
+        blacklist_db[user_id] = entry
         save_json(BLACKLIST_FILE, blacklist_db)
-        return web.json_response({"success": True})
-    except Exception:
-        return web.json_response({"error": "Invalid request"}, status=400)
+        return web.json_response({"success": True, "user": entry})
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=400)
 
 
 async def handle_dashboard_blacklist_remove(request):
@@ -1675,6 +2324,101 @@ async def handle_dashboard_blacklist_remove(request):
         return web.json_response({"error": "Invalid request"}, status=400)
 
 
+async def handle_dashboard_guild_info(request):
+    err = require_dashboard_key(request)
+    if err:
+        return err
+    
+    guild = bot.get_guild(GUILD_ID)
+    if not guild:
+        return web.json_response({"error": "Guild not found"}, status=404)
+    
+    return web.json_response({
+        "name": guild.name,
+        "icon_url": str(guild.icon.url) if guild.icon else None,
+        "member_count": guild.member_count,
+    })
+
+
+async def handle_dashboard_appeals(request):
+    err = require_dashboard_key(request)
+    if err:
+        return err
+    
+    sorted_appeals = sorted(
+        [
+            {
+                "appeal_id": aid,
+                "discord_username": a.get("discord_username", "Unknown"),
+                "discord_id": a.get("discord_id", ""),
+                "why_banned": a.get("why_banned", a.get("ban_reason", "")),
+                "ban_reason": a.get("ban_reason", ""),
+                "status": a.get("status", "unknown"),
+                "submitted_at": a.get("submitted_at", ""),
+            }
+            for aid, a in appeals_db.items()
+        ],
+        key=lambda x: x.get("submitted_at", ""),
+        reverse=True,
+    )
+    
+    return web.json_response({"appeals": sorted_appeals})
+
+
+async def handle_dashboard_notes(request):
+    err = require_dashboard_key(request)
+    if err:
+        return err
+    
+    sorted_notes = sorted(
+        notes_db.values(),
+        key=lambda x: x.get("timestamp", ""),
+        reverse=True,
+    )
+    return web.json_response({"notes": sorted_notes})
+
+
+async def handle_dashboard_notes_add(request):
+    err = require_dashboard_key(request)
+    if err:
+        return err
+    
+    try:
+        body = await request.json()
+        content = body.get("content", "").strip()
+        if not content:
+            return web.json_response({"error": "Content required"}, status=400)
+        
+        note_id = f"note_{int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)}"
+        notes_db[note_id] = {
+            "id": note_id,
+            "content": content,
+            "author": "Staff",
+            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        }
+        save_json(NOTES_FILE, notes_db)
+        return web.json_response({"success": True})
+    except Exception:
+        return web.json_response({"error": "Invalid request"}, status=400)
+
+
+async def handle_dashboard_notes_delete(request):
+    err = require_dashboard_key(request)
+    if err:
+        return err
+    
+    try:
+        body = await request.json()
+        note_id = body.get("id", "").strip()
+        if note_id in notes_db:
+            del notes_db[note_id]
+            save_json(NOTES_FILE, notes_db)
+            return web.json_response({"success": True})
+        return web.json_response({"error": "Note not found"}, status=404)
+    except Exception:
+        return web.json_response({"error": "Invalid request"}, status=400)
+
+
 async def start_web_server():
     app = web.Application()
     
@@ -1685,10 +2429,15 @@ async def start_web_server():
     
     # Dashboard
     app.router.add_get("/dashboard", handle_dashboard_page)
+    app.router.add_get("/api/dashboard/guild-info", handle_dashboard_guild_info)
     app.router.add_get("/api/dashboard/data", handle_dashboard_data)
+    app.router.add_get("/api/dashboard/appeals", handle_dashboard_appeals)
     app.router.add_get("/api/dashboard/blacklist", handle_dashboard_blacklist)
     app.router.add_post("/api/dashboard/blacklist/add", handle_dashboard_blacklist_add)
     app.router.add_post("/api/dashboard/blacklist/remove", handle_dashboard_blacklist_remove)
+    app.router.add_get("/api/dashboard/notes", handle_dashboard_notes)
+    app.router.add_post("/api/dashboard/notes/add", handle_dashboard_notes_add)
+    app.router.add_post("/api/dashboard/notes/delete", handle_dashboard_notes_delete)
     
     # Health check
     async def healthz(request):
