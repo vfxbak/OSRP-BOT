@@ -1631,6 +1631,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             --orange: #f0883e;
             --purple: #a371f7;
             --radius: 10px;
+            --sidebar-w: 220px;
         }
         body {
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
@@ -1692,37 +1693,104 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         .login-card button:hover { opacity: 0.9; }
         .login-card button:active { transform: scale(0.98); }
 
-        /* Dashboard layout */
-        .dashboard {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 24px;
+        .app-layout {
+            display: flex;
+            min-height: 100vh;
         }
+        .sidebar {
+            width: var(--sidebar-w);
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+        }
+        .sidebar-brand {
+            padding: 20px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .sidebar-brand .icon {
+            width: 36px; height: 36px;
+            background: linear-gradient(135deg, var(--accent), #0099cc);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; font-weight: 800; color: #fff;
+            flex-shrink: 0;
+        }
+        .sidebar-brand h2 { font-size: 14px; font-weight: 700; line-height: 1.2; }
+        .sidebar-brand .sub { font-size: 10px; color: var(--text-secondary); }
+        .sidebar-nav {
+            flex: 1;
+            padding: 12px 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.15s;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+            font-family: inherit;
+        }
+        .nav-item:hover { background: var(--bg-card); color: var(--text-primary); }
+        .nav-item.active { background: var(--accent); color: #fff; font-weight: 600; }
+        .nav-item .nav-badge {
+            margin-left: auto;
+            background: var(--bg-card);
+            border-radius: 10px;
+            padding: 1px 8px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+        .nav-item.active .nav-badge { background: rgba(255,255,255,0.2); color: #fff; }
+        .nav-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 8px 12px;
+        }
+        .sidebar-footer {
+            padding: 12px 8px;
+            border-top: 1px solid var(--border);
+        }
+        .sidebar-footer .nav-item { font-size: 12px; }
 
-        /* Header */
-        .header {
+        .main-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        .topbar {
             display: flex;
             align-items: center;
             gap: 16px;
-            padding: 20px 24px;
+            padding: 16px 24px;
             background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border);
         }
-        .header-icon {
-            width: 48px; height: 48px;
-            border-radius: 12px;
-            background: linear-gradient(135deg, var(--accent), #0099cc);
-            display: flex; align-items: center; justify-content: center;
-            font-size: 20px; font-weight: 800; color: #fff;
-            flex-shrink: 0;
-        }
-        .header-info { flex: 1; }
-        .header-info h1 { font-size: 20px; font-weight: 700; }
-        .header-info .subtitle { color: var(--text-secondary); font-size: 13px; margin-top: 2px; }
-        .header-actions { display: flex; gap: 8px; }
-        .header-actions button {
+        .topbar-info { flex: 1; min-width: 0; }
+        .topbar-info h1 { font-size: 18px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .topbar-info .sub { font-size: 12px; color: var(--text-secondary); margin-top: 1px; }
+        .topbar-actions { display: flex; gap: 8px; flex-shrink: 0; }
+        .topbar-actions button {
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: 8px;
@@ -1732,75 +1800,81 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             font-weight: 600;
             cursor: pointer;
             transition: background 0.2s;
+            font-family: inherit;
         }
-        .header-actions button:hover { background: var(--bg-card-hover); }
-        .header-actions button.danger { color: var(--red); }
-        .header-actions button.danger:hover { background: rgba(248, 81, 73, 0.1); }
+        .topbar-actions button:hover { background: var(--bg-card-hover); }
+        .topbar-actions button.danger { color: var(--red); }
+        .topbar-actions button.danger:hover { background: rgba(248, 81, 73, 0.1); }
 
-        /* Stats row */
-        .stats {
+        .content {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+        }
+
+        .panel { display: none; }
+        .panel.active { display: block; }
+
+        .stats-row {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 16px;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
             margin-bottom: 24px;
         }
         .stat-card {
             background: var(--bg-secondary);
             border: 1px solid var(--border);
             border-radius: var(--radius);
-            padding: 20px;
+            padding: 18px;
             position: relative;
             overflow: hidden;
         }
-        .stat-card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 3px;
+        .stat-card .stat-top { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+        .stat-card .stat-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
         }
-        .stat-card.total::before { background: var(--accent); }
-        .stat-card.pending::before { background: var(--orange); }
-        .stat-card.approved::before { background: var(--green); }
-        .stat-card.denied::before { background: var(--red); }
-        .stat-card .num { font-size: 32px; font-weight: 800; }
+        .stat-card .stat-dot.accent { background: var(--accent); }
+        .stat-card .stat-dot.orange { background: var(--orange); }
+        .stat-card .stat-dot.green { background: var(--green); }
+        .stat-card .stat-dot.red { background: var(--red); }
+        .stat-card .stat-label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.3px; }
+        .stat-card .num { font-size: 28px; font-weight: 800; }
         .stat-card .num.accent { color: var(--accent); }
         .stat-card .num.orange { color: var(--orange); }
         .stat-card .num.green { color: var(--green); }
         .stat-card .num.red { color: var(--red); }
-        .stat-card .label { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
-        .stat-card .sub { font-size: 11px; color: var(--text-secondary); margin-top: 8px; }
+        .stat-card .stat-sub { font-size: 10px; color: var(--text-secondary); margin-top: 4px; }
 
-        /* Grid layout for sections */
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-        .grid-full { grid-column: 1 / -1; }
-
-        /* Section cards */
-        .section {
+        .card {
             background: var(--bg-secondary);
             border: 1px solid var(--border);
             border-radius: var(--radius);
             overflow: hidden;
         }
-        .section-header {
-            padding: 16px 20px;
+        .card-header {
+            padding: 14px 20px;
             border-bottom: 1px solid var(--border);
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
-        .section-header h2 { font-size: 15px; font-weight: 700; }
-        .section-header .badge {
+        .card-header h2 { font-size: 14px; font-weight: 700; }
+        .card-header .badge {
             background: var(--bg-card);
             border-radius: 12px;
             padding: 2px 10px;
-            font-size: 12px;
+            font-size: 11px;
             color: var(--text-secondary);
         }
-        .section-body { padding: 20px; }
+        .card-body { padding: 20px; }
 
-        /* Form elements */
+        .panel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .panel-full { grid-column: 1 / -1; }
+
         .form-group { margin-bottom: 14px; }
-        .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.3px; }
+        .form-group label { display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.3px; }
         .form-group input, .form-group textarea, .form-group select {
             width: 100%;
             background: var(--bg-primary);
@@ -1808,14 +1882,14 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             border-radius: 8px;
             padding: 10px 14px;
             color: var(--text-primary);
-            font-size: 14px;
+            font-size: 13px;
             font-family: inherit;
             transition: border-color 0.2s;
         }
         .form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
-        .form-group textarea { resize: vertical; min-height: 80px; }
+        .form-group textarea { resize: vertical; min-height: 70px; }
         .form-row { display: flex; gap: 10px; }
-        .form-row input { flex: 1; }
+        .form-row input, .form-row textarea { flex: 1; }
         .btn {
             background: var(--bg-card);
             border: 1px solid var(--border);
@@ -1842,7 +1916,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         .btn-sm { padding: 6px 12px; font-size: 12px; }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        /* Tables */
         .table-wrap { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
         th { text-align: left; padding: 10px 16px; font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); }
@@ -1863,7 +1936,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         .status-badge.approved { background: rgba(63, 185, 80, 0.15); color: var(--green); }
         .status-badge.denied { background: rgba(248, 81, 73, 0.15); color: var(--red); }
 
-        /* Notes */
         .note-item {
             background: var(--bg-primary);
             border: 1px solid var(--border);
@@ -1878,6 +1950,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         .note-content { flex: 1; }
         .note-content p { font-size: 13px; line-height: 1.5; word-break: break-word; }
         .note-content .meta { font-size: 11px; color: var(--text-secondary); margin-top: 6px; }
+        .note-content .meta .author { color: var(--accent); }
         .note-delete {
             background: none;
             border: none;
@@ -1891,7 +1964,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         }
         .note-delete:hover { background: rgba(248, 81, 73, 0.15); color: var(--red); }
 
-        /* Alerts */
         .alert {
             padding: 12px 16px;
             border-radius: 8px;
@@ -1905,8 +1977,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         .alert-success { background: rgba(63, 185, 80, 0.1); border: 1px solid rgba(63, 185, 80, 0.3); color: var(--green); }
         .hidden { display: none !important; }
         .empty-state { text-align: center; padding: 32px 16px; color: var(--text-secondary); font-size: 13px; }
-        
-        /* Blacklist user cards */
+
         .user-card {
             display: flex;
             align-items: center;
@@ -1939,16 +2010,15 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         .user-info .name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .user-info .name .tag { color: var(--text-secondary); font-weight: 400; }
         .user-info .uid { font-size: 11px; color: var(--text-secondary); font-family: 'Consolas', monospace; margin-top: 2px; }
-        .user-meta { text-align: right; flex-shrink: 0; }
-        .user-meta .added { font-size: 11px; color: var(--text-secondary); }
-        .user-meta .added-date { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+        .user-info .note-text { font-size: 12px; color: var(--text-secondary); margin-top: 4px; font-style: italic; }
+        .user-meta { text-align: right; flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+        .user-meta .added-date { font-size: 11px; color: var(--text-secondary); }
 
-        /* Tabs */
-        .tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+        .tabs { display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; }
         .tab {
             background: transparent;
             border: none;
-            padding: 8px 16px;
+            padding: 7px 14px;
             color: var(--text-secondary);
             font-size: 13px;
             font-weight: 600;
@@ -1960,10 +2030,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         .tab:hover { background: var(--bg-card); }
         .tab.active { background: var(--accent); color: #fff; }
 
-        /* Refresh indicator */
-        .refreshing { opacity: 0.5; pointer-events: none; }
-
-        /* Loading skeleton */
         .skeleton {
             background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-card-hover) 50%, var(--bg-card) 75%);
             background-size: 200% 100%;
@@ -1974,139 +2040,282 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         .skeleton-text { height: 14px; margin-bottom: 8px; }
         .skeleton-text:last-child { width: 60%; }
 
-        /* Search */
-        .search-box {
-            position: relative;
-        }
-        .search-box input {
-            padding-left: 36px;
-        }
-        .search-box .icon {
-            position: absolute;
-            left: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--text-secondary);
-            font-size: 14px;
-            pointer-events: none;
-        }
+        .mod-quick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+        .blame-text { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
 
         @media (max-width: 900px) {
-            .grid-2 { grid-template-columns: 1fr; }
-            .dashboard { padding: 16px; }
-            .header { flex-wrap: wrap; }
-            .stats { grid-template-columns: repeat(2, 1fr); }
+            .sidebar { width: 56px; }
+            .sidebar-brand h2, .sidebar-brand .sub, .nav-item span, .nav-badge { display: none; }
+            .nav-item { justify-content: center; padding: 10px; }
+            .sidebar-brand { justify-content: center; }
+            .panel-grid { grid-template-columns: 1fr; }
+            .mod-quick-grid { grid-template-columns: 1fr; }
+            .content { padding: 16px; }
+            .topbar { padding: 12px 16px; }
         }
     </style>
 </head>
 <body>
-    <!-- Login Page -->
     <div class="login-page" id="login-page">
         <div class="login-card">
             <div class="logo">OS</div>
             <h1>Staff Dashboard</h1>
             <p>Oklahoma State Roleplay — Ban Appeal Management</p>
-                    <input type="password" id="login-key" placeholder="Enter dashboard key" autocomplete="off" onkeydown="if(event.key==='Enter')loginClick()">
-                    <button id="login-btn" onclick="loginClick()">Sign In</button>
-                    <div id="login-error-fallback" style="display:none;margin-top:16px;padding:12px 16px;border-radius:8px;background:rgba(248,81,73,0.1);border:1px solid rgba(248,81,73,0.3);color:#f85149;font-size:14px;font-weight:500;"></div>
+            <input type="password" id="login-key" placeholder="Enter dashboard key" autocomplete="off" onkeydown="if(event.key==='Enter')loginClick()">
+            <button id="login-btn" onclick="loginClick()">Sign In</button>
+            <div id="login-error-fallback" style="display:none;margin-top:16px;padding:12px 16px;border-radius:8px;background:rgba(248,81,73,0.1);border:1px solid rgba(248,81,73,0.3);color:#f85149;font-size:14px;font-weight:500;"></div>
         </div>
     </div>
 
-    <!-- Dashboard -->
-    <div class="dashboard hidden" id="dashboard-page">
-        <!-- Header -->
-        <div class="header">
-            <div class="header-icon" id="header-icon">OS</div>
-            <div class="header-info">
-                <h1 id="guild-name">OSRP Staff Dashboard</h1>
-                <div class="subtitle" id="guild-subtitle">Loading server info...</div>
-            </div>
-            <div class="header-actions">
-                <button id="refresh-btn">Refresh</button>
-                <button id="logout-btn" class="danger">Sign Out</button>
-            </div>
-        </div>
-
-        <!-- Stats -->
-        <div class="stats" id="stats">
-            <div class="stat-card total"><div class="num accent" id="stat-total">--</div><div class="label">Total Appeals</div></div>
-            <div class="stat-card pending"><div class="num orange" id="stat-pending">--</div><div class="label">Pending</div></div>
-            <div class="stat-card approved"><div class="num green" id="stat-approved">--</div><div class="label">Approved</div></div>
-            <div class="stat-card denied"><div class="num red" id="stat-denied">--</div><div class="label">Denied</div></div>
-        </div>
-
-        <div class="grid-2">
-            <!-- Appeals Section -->
-            <div class="section grid-full">
-                <div class="section-header">
-                    <h2>Recent Appeals</h2>
-                    <span class="badge" id="appeals-count">0</span>
-                </div>
-                <div class="section-body">
-                    <div class="tabs">
-                        <button class="tab active" data-filter="all">All</button>
-                        <button class="tab" data-filter="pending">Pending</button>
-                        <button class="tab" data-filter="approved">Approved</button>
-                        <button class="tab" data-filter="denied">Denied</button>
-                    </div>
-                    <div class="table-wrap">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>User</th>
-                                    <th>Reason</th>
-                                    <th>Status</th>
-                                    <th>Date</th>
-                                </tr>
-                            </thead>
-                            <tbody id="appeals-table-body">
-                                <tr><td colspan="4"><div class="empty-state">Loading appeals...</div></td></tr>
-                            </tbody>
-                        </table>
-                    </div>
+    <div class="app-layout hidden" id="dashboard-page">
+        <nav class="sidebar">
+            <div class="sidebar-brand">
+                <div class="icon">OS</div>
+                <div>
+                    <h2>OSRP</h2>
+                    <div class="sub">Staff Panel</div>
                 </div>
             </div>
+            <div class="sidebar-nav">
+                <button class="nav-item active" data-panel="all">
+                    <span style="font-weight:600;">&#8319;</span> <span>All Appeals</span>
+                    <span class="nav-badge" id="nav-all">0</span>
+                </button>
+                <button class="nav-item" data-panel="pending">
+                    <span style="color:var(--orange);">&#9679;</span> <span>Pending</span>
+                    <span class="nav-badge" id="nav-pending">0</span>
+                </button>
+                <button class="nav-item" data-panel="approved">
+                    <span style="color:var(--green);">&#9679;</span> <span>Approved</span>
+                    <span class="nav-badge" id="nav-approved">0</span>
+                </button>
+                <button class="nav-item" data-panel="denied">
+                    <span style="color:var(--red);">&#9679;</span> <span>Denied</span>
+                    <span class="nav-badge" id="nav-denied">0</span>
+                </button>
+                <div class="nav-divider"></div>
+                <button class="nav-item" data-panel="blacklist">
+                    <span style="color:var(--red);">&#9898;</span> <span>Blacklist</span>
+                    <span class="nav-badge" id="nav-blacklist">0</span>
+                </button>
+                <button class="nav-item" data-panel="notes">
+                    <span style="color:var(--accent);">&#9998;</span> <span>Staff Notes</span>
+                    <span class="nav-badge" id="nav-notes">0</span>
+                </button>
+                <div class="nav-divider"></div>
+                <button class="nav-item" data-panel="modpanel">
+                    <span>&#9881;</span> <span>Mod Panel</span>
+                </button>
+            </div>
+            <div class="sidebar-footer">
+                <button class="nav-item danger" id="logout-btn">
+                    <span>&#10140;</span> <span>Sign Out</span>
+                </button>
+            </div>
+        </nav>
 
-            <!-- Staff Notes -->
-            <div class="section">
-                <div class="section-header">
-                    <h2>Staff Notes</h2>
-                    <span class="badge" id="notes-count">0</span>
+        <div class="main-area">
+            <div class="topbar">
+                <div class="topbar-info">
+                    <h1 id="guild-name">OSRP Staff Dashboard</h1>
+                    <div class="sub" id="guild-subtitle">Loading server info...</div>
                 </div>
-                <div class="section-body">
-                    <div class="form-row" style="margin-bottom:16px;">
-                        <textarea id="note-input" placeholder="Write a note..." rows="2" style="flex:1;"></textarea>
-                        <button id="note-add-btn" class="btn btn-primary" style="align-self:flex-end;">Add Note</button>
-                    </div>
-                    <div id="notes-list">
-                        <div class="empty-state">No notes yet.</div>
-                    </div>
+                <div class="topbar-actions">
+                    <button id="refresh-btn">Refresh</button>
                 </div>
             </div>
 
-            <!-- Blacklist -->
-            <div class="section">
-                <div class="section-header">
-                    <h2>Blacklist</h2>
-                    <span class="badge" id="blacklist-count">0</span>
-                </div>
-                <div class="section-body">
-                    <div class="form-row" style="margin-bottom:16px;">
-                        <input type="text" id="blacklist-user-id" placeholder="Discord user ID">
-                        <button id="blacklist-add-btn" class="btn btn-primary">Add</button>
+            <div class="content">
+                <div class="stats-row" id="stats">
+                    <div class="stat-card">
+                        <div class="stat-top"><div class="stat-dot accent"></div><span class="stat-label">Total Appeals</span></div>
+                        <div class="num accent" id="stat-total">--</div>
                     </div>
-                    <div id="blacklist-result" class="hidden"></div>
-                    <div id="blacklist-table">
-                        <div class="empty-state">No blacklisted users.</div>
+                    <div class="stat-card">
+                        <div class="stat-top"><div class="stat-dot orange"></div><span class="stat-label">Pending</span></div>
+                        <div class="num orange" id="stat-pending">--</div>
+                        <div class="stat-sub" id="stat-pending-pct"></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-top"><div class="stat-dot green"></div><span class="stat-label">Approved</span></div>
+                        <div class="num green" id="stat-approved">--</div>
+                        <div class="stat-sub" id="stat-approved-pct"></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-top"><div class="stat-dot red"></div><span class="stat-label">Denied</span></div>
+                        <div class="num red" id="stat-denied">--</div>
+                        <div class="stat-sub" id="stat-denied-pct"></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-top"><div class="stat-dot" style="background:var(--red);"></div><span class="stat-label">Blacklisted</span></div>
+                        <div class="num red" id="stat-blacklist">--</div>
                     </div>
                 </div>
+
+                <!-- Panel: All Appeals -->
+                <div class="panel active" id="panel-all">
+                    <div class="card panel-full">
+                        <div class="card-header">
+                            <h2>All Appeals</h2>
+                            <span class="badge" id="appeals-count">0</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="tabs">
+                                <button class="tab active" data-filter="all">All</button>
+                                <button class="tab" data-filter="pending">Pending</button>
+                                <button class="tab" data-filter="approved">Approved</button>
+                                <button class="tab" data-filter="denied">Denied</button>
+                            </div>
+                            <div class="table-wrap">
+                                <table>
+                                    <thead><tr><th>User</th><th>Reason</th><th>Status</th><th>Date</th></tr></thead>
+                                    <tbody id="appeals-table-body"><tr><td colspan="4"><div class="empty-state">Loading appeals...</div></td></tr></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel: Pending -->
+                <div class="panel" id="panel-pending">
+                    <div class="card panel-full">
+                        <div class="card-header">
+                            <h2>Pending Appeals</h2>
+                            <span class="badge orange" id="pending-count">0</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-wrap">
+                                <table>
+                                    <thead><tr><th>User</th><th>Reason</th><th>Date</th></tr></thead>
+                                    <tbody id="pending-table-body"><tr><td colspan="3"><div class="empty-state">Loading...</div></td></tr></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel: Approved -->
+                <div class="panel" id="panel-approved">
+                    <div class="card panel-full">
+                        <div class="card-header">
+                            <h2>Approved Appeals</h2>
+                            <span class="badge" style="background:rgba(63,185,80,0.15);color:var(--green);" id="approved-count">0</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-wrap">
+                                <table>
+                                    <thead><tr><th>User</th><th>Reason</th><th>Date</th></tr></thead>
+                                    <tbody id="approved-table-body"><tr><td colspan="3"><div class="empty-state">Loading...</div></td></tr></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel: Denied -->
+                <div class="panel" id="panel-denied">
+                    <div class="card panel-full">
+                        <div class="card-header">
+                            <h2>Denied Appeals</h2>
+                            <span class="badge" style="background:rgba(248,81,73,0.15);color:var(--red);" id="denied-count">0</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-wrap">
+                                <table>
+                                    <thead><tr><th>User</th><th>Reason</th><th>Date</th></tr></thead>
+                                    <tbody id="denied-table-body"><tr><td colspan="3"><div class="empty-state">Loading...</div></td></tr></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel: Blacklist -->
+                <div class="panel" id="panel-blacklist">
+                    <div class="panel-grid">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2>Blacklist a User</h2>
+                            </div>
+                            <div class="card-body">
+                                <div id="blacklist-result" class="hidden"></div>
+                                <div class="form-group">
+                                    <label>Discord User ID</label>
+                                    <input type="text" id="blacklist-user-id" placeholder="Paste Discord user ID here">
+                                </div>
+                                <div class="form-group">
+                                    <label>Reason / Note</label>
+                                    <textarea id="blacklist-note" placeholder="Why is this user being blacklisted?" rows="3"></textarea>
+                                </div>
+                                <button id="blacklist-add-btn" class="btn btn-primary" style="width:100%;">Add to Blacklist</button>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <h2>Blacklisted Users</h2>
+                                <span class="badge" id="blacklist-count">0</span>
+                            </div>
+                            <div class="card-body" id="blacklist-table">
+                                <div class="empty-state">No blacklisted users.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel: Staff Notes -->
+                <div class="panel" id="panel-notes">
+                    <div class="card panel-full">
+                        <div class="card-header">
+                            <h2>Staff Notes</h2>
+                            <span class="badge" id="notes-count">0</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-row" style="margin-bottom:16px;">
+                                <textarea id="note-input" placeholder="Write a note..." rows="2" style="flex:1;"></textarea>
+                                <button id="note-add-btn" class="btn btn-primary" style="align-self:flex-end;">Add Note</button>
+                            </div>
+                            <div id="notes-list">
+                                <div class="empty-state">No notes yet.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel: Mod Panel -->
+                <div class="panel" id="panel-modpanel">
+                    <div class="mod-quick-grid">
+                        <div class="card">
+                            <div class="card-header"><h2>Quick Blacklist</h2></div>
+                            <div class="card-body">
+                                <div class="form-group">
+                                    <label>User ID</label>
+                                    <input type="text" id="mod-bl-id" placeholder="Discord user ID">
+                                </div>
+                                <div class="form-group">
+                                    <label>Reason</label>
+                                    <textarea id="mod-bl-note" placeholder="Why?" rows="2"></textarea>
+                                </div>
+                                <button id="mod-bl-btn" class="btn btn-danger" style="width:100%;">Blacklist User</button>
+                                <div id="mod-bl-result" style="margin-top:10px;"></div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header"><h2>Server Stats</h2></div>
+                            <div class="card-body" id="mod-stats">
+                                <div class="empty-state">Loading stats...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
 
     <script>
         const API_KEY = () => { try { return localStorage.getItem('dashboard_key') || ''; } catch(e) { return ''; } };
-        let currentFilter = 'all';
+        var currentFilter = 'all';
 
         function showLoginError(msg) {
             var el = document.getElementById('login-error-fallback');
@@ -2119,13 +2328,13 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
         function escapeHtml(text) {
             if (!text) return '';
-            const d = document.createElement('div');
+            var d = document.createElement('div');
             d.textContent = text;
             return d.innerHTML;
         }
         function formatDate(iso) {
             if (!iso) return '--';
-            const d = new Date(iso);
+            var d = new Date(iso);
             return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
         }
         function showAlert(id, msg, type) {
@@ -2137,7 +2346,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             setTimeout(function() { el.classList.add('hidden'); }, 4000);
         }
 
-        // ========== API CLIENT ==========
         async function apiFetch(path, options) {
             options = options || {};
             var key = API_KEY();
@@ -2145,9 +2353,8 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             try {
                 var res = await fetch(path, { ...options, headers: { ...headers, ...(options.headers || {}) } });
                 if (res.status === 401) {
-                    var k;
                     try { localStorage.removeItem('dashboard_key'); } catch(e) {}
-                    showLoginError('Invalid dashboard key. Check that DASHBOARD_KEY env var matches the key you entered.');
+                    showLoginError('Invalid dashboard key.');
                     return null;
                 }
                 if (res.status === 503) {
@@ -2156,18 +2363,15 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                 }
                 return res.json();
             } catch (e) {
-                return { error: 'Network error - could not reach server.' };
+                return { error: 'Network error.' };
             }
         }
 
-        // ========== LOGIN ==========
         async function doLogin(keyValue) {
             hideLoginError();
             try { localStorage.setItem('dashboard_key', keyValue); } catch(e) {}
-            var [guild, data] = await Promise.all([
-                apiFetch('/api/dashboard/guild-info'),
-                apiFetch('/api/dashboard/data')
-            ]);
+            var guild = await apiFetch('/api/dashboard/guild-info');
+            var data = await apiFetch('/api/dashboard/data');
             if (!data) return;
             if (data.error) {
                 showLoginError(data.error);
@@ -2181,17 +2385,25 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
         async function renderDashboard(guild, data) {
             if (guild && !guild.error) {
-                document.getElementById('guild-name').textContent = (guild.name || 'OSRP') + ' — Staff Dashboard';
+                document.getElementById('guild-name').textContent = (guild.name || 'OSRP') + ' - Staff Dashboard';
                 document.getElementById('guild-subtitle').textContent = (guild.member_count || '?') + ' members';
-                if (guild.icon_url) {
-                    document.getElementById('header-icon').innerHTML = '<img src="' + escapeHtml(guild.icon_url) + '" alt="" style="width:48px;height:48px;border-radius:12px;">';
-                }
             }
             document.getElementById('stat-total').textContent = data.total_appeals || 0;
             document.getElementById('stat-pending').textContent = data.pending_appeals || 0;
             document.getElementById('stat-approved').textContent = data.approved_appeals || 0;
             document.getElementById('stat-denied').textContent = data.denied_appeals || 0;
             document.getElementById('appeals-count').textContent = data.total_appeals || 0;
+            document.getElementById('nav-all').textContent = data.total_appeals || 0;
+            document.getElementById('nav-pending').textContent = data.pending_appeals || 0;
+            document.getElementById('nav-approved').textContent = data.approved_appeals || 0;
+            document.getElementById('nav-denied').textContent = data.denied_appeals || 0;
+
+            var total = (data.total_appeals || 0) || 1;
+            var pct = function(v) { return (v / total * 100).toFixed(0) + '%'; };
+            document.getElementById('stat-pending-pct').textContent = pct(data.pending_appeals || 0) + ' of total';
+            document.getElementById('stat-approved-pct').textContent = pct(data.approved_appeals || 0) + ' of total';
+            document.getElementById('stat-denied-pct').textContent = pct(data.denied_appeals || 0) + ' of total';
+
             await Promise.all([ loadAppeals(), loadNotes(), loadBlacklist() ]);
         }
 
@@ -2205,7 +2417,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             doLogin(input.value.trim());
         }
 
-        // ========== AUTO-LOGIN ==========
         (function() {
             var k;
             try { k = localStorage.getItem('dashboard_key'); } catch(e) {}
@@ -2222,176 +2433,192 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             await doLogin(API_KEY());
         });
 
-        // ========== APPEALS ==========
+        document.querySelectorAll('.nav-item[data-panel]').forEach(function(item) {
+            item.addEventListener('click', function() {
+                document.querySelectorAll('.nav-item[data-panel]').forEach(function(n) { n.classList.remove('active'); });
+                this.classList.add('active');
+                document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
+                var panel = document.getElementById('panel-' + this.dataset.panel);
+                if (panel) panel.classList.add('active');
+            });
+        });
+
         async function loadAppeals() {
-            const data = await apiFetch('/api/dashboard/appeals');
+            var data = await apiFetch('/api/dashboard/appeals');
             if (!data || !data.appeals) return;
             renderAppeals(data.appeals);
         }
 
         function renderAppeals(appeals) {
-            const tbody = document.getElementById('appeals-table-body');
-            const filtered = currentFilter === 'all'
-                ? appeals
-                : appeals.filter(a => a.status === currentFilter);
-            
+            var tbody = document.getElementById('appeals-table-body');
+            var filtered = currentFilter === 'all' ? appeals : appeals.filter(function(a) { return a.status === currentFilter; });
             if (filtered.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="4"><div class="empty-state">No ' + (currentFilter === 'all' ? '' : currentFilter + ' ') + 'appeals found.</div></td></tr>';
-                return;
+            } else {
+                tbody.innerHTML = filtered.map(function(a) {
+                    var sc = a.status === 'pending' ? 'pending' : a.status === 'approved' ? 'approved' : 'denied';
+                    return '<tr><td><strong>' + escapeHtml(a.discord_username || 'Unknown') + '</strong><br><code>' + escapeHtml(a.discord_id || '') + '</code></td><td>' + escapeHtml((a.why_banned || a.ban_reason || '').substring(0, 60)) + (a.why_banned && a.why_banned.length > 60 ? '...' : '') + '</td><td><span class="status-badge ' + sc + '">' + a.status + '</span></td><td>' + formatDate(a.submitted_at) + '</td></tr>';
+                }).join('');
             }
 
-            tbody.innerHTML = filtered.map(a => {
-                const statusClass = a.status === 'pending' ? 'pending' : a.status === 'approved' ? 'approved' : 'denied';
-                return '<tr>' +
-                    '<td><strong>' + escapeHtml(a.discord_username || 'Unknown') + '</strong><br><code>' + escapeHtml(a.discord_id || '') + '</code></td>' +
-                    '<td>' + escapeHtml((a.why_banned || a.ban_reason || '').substring(0, 60)) + (a.why_banned && a.why_banned.length > 60 ? '...' : '') + '</td>' +
-                    '<td><span class="status-badge ' + statusClass + '">' + a.status + '</span></td>' +
-                    '<td>' + formatDate(a.submitted_at) + '</td>' +
-                    '</tr>';
-            }).join('');
+            var pending = appeals.filter(function(a) { return a.status === 'pending'; });
+            var approved = appeals.filter(function(a) { return a.status === 'approved'; });
+            var denied = appeals.filter(function(a) { return a.status === 'denied'; });
+
+            document.getElementById('pending-count').textContent = pending.length;
+            document.getElementById('approved-count').textContent = approved.length;
+            document.getElementById('denied-count').textContent = denied.length;
+
+            var renderTable = function(id, list, cols) {
+                var el = document.getElementById(id);
+                if (list.length === 0) {
+                    el.innerHTML = '<tr><td colspan="' + cols + '"><div class="empty-state">None.</div></td></tr>';
+                } else {
+                    el.innerHTML = list.map(function(a) {
+                        return '<tr><td><strong>' + escapeHtml(a.discord_username || 'Unknown') + '</strong><br><code>' + escapeHtml(a.discord_id || '') + '</code></td><td>' + escapeHtml((a.why_banned || a.ban_reason || '').substring(0, 60)) + (a.why_banned && a.why_banned.length > 60 ? '...' : '') + '</td><td>' + formatDate(a.submitted_at) + '</td></tr>';
+                    }).join('');
+                }
+            };
+            renderTable('pending-table-body', pending, 3);
+            renderTable('approved-table-body', approved, 3);
+            renderTable('denied-table-body', denied, 3);
         }
 
-        // Tab switching
-        document.querySelectorAll('.tab').forEach(tab => {
+        document.querySelectorAll('.tab').forEach(function(tab) {
             tab.addEventListener('click', function() {
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
                 this.classList.add('active');
                 currentFilter = this.dataset.filter;
                 loadAppeals();
             });
         });
 
-        // ========== NOTES ==========
         async function loadNotes() {
-            const data = await apiFetch('/api/dashboard/notes');
+            var data = await apiFetch('/api/dashboard/notes');
             if (!data) return;
-            const list = document.getElementById('notes-list');
+            var list = document.getElementById('notes-list');
             document.getElementById('notes-count').textContent = data.notes ? data.notes.length : 0;
-            
+            document.getElementById('nav-notes').textContent = data.notes ? data.notes.length : 0;
             if (!data.notes || data.notes.length === 0) {
                 list.innerHTML = '<div class="empty-state">No notes yet.</div>';
                 return;
             }
-
-            list.innerHTML = data.notes.slice().reverse().map(n => {
-                const author = n.author || 'Staff';
-                return '<div class="note-item">' +
-                    '<div class="note-content">' +
-                    '<p>' + escapeHtml(n.content) + '</p>' +
-                    '<div class="meta">' + escapeHtml(author) + ' &middot; ' + formatDate(n.timestamp) + '</div>' +
-                    '</div>' +
-                    '<button class="note-delete" onclick="deleteNote(\\'' + escapeHtml(n.id) + '\\')">&times;</button>' +
-                    '</div>';
+            list.innerHTML = data.notes.slice().reverse().map(function(n) {
+                var author = escapeHtml(n.author || 'Staff');
+                return '<div class="note-item"><div class="note-content"><p>' + escapeHtml(n.content) + '</p><div class="meta"><span class="author">' + author + '</span> &middot; ' + formatDate(n.timestamp) + '</div></div><button class="note-delete" onclick="deleteNote(\\'' + escapeHtml(n.id) + '\\')">&times;</button></div>';
             }).join('');
         }
 
         async function deleteNote(id) {
-            const data = await apiFetch('/api/dashboard/notes/delete', {
-                method: 'POST',
-                body: JSON.stringify({ id: id })
-            });
+            var data = await apiFetch('/api/dashboard/notes/delete', { method: 'POST', body: JSON.stringify({ id: id }) });
             if (data && data.success) loadNotes();
         }
 
         document.getElementById('note-add-btn').addEventListener('click', async function() {
-            const input = document.getElementById('note-input');
-            const content = input.value.trim();
+            var input = document.getElementById('note-input');
+            var content = input.value.trim();
             if (!content) return;
-            const data = await apiFetch('/api/dashboard/notes/add', {
-                method: 'POST',
-                body: JSON.stringify({ content: content })
-            });
-            if (data && data.success) {
-                input.value = '';
-                loadNotes();
-            }
+            var data = await apiFetch('/api/dashboard/notes/add', { method: 'POST', body: JSON.stringify({ content: content }) });
+            if (data && data.success) { input.value = ''; loadNotes(); }
         });
 
         document.getElementById('note-input').addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                document.getElementById('note-add-btn').click();
-            }
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); document.getElementById('note-add-btn').click(); }
         });
 
-        // ========== BLACKLIST ==========
         function renderUserCard(u) {
-            const avatarHtml = u.avatar_url
-                ? '<img src="' + escapeHtml(u.avatar_url) + '" alt="" loading="lazy">'
-                : '<div class="placeholder">' + (u.username ? u.username[0].toUpperCase() : '?') + '</div>';
-            const nameHtml = u.username && u.username !== u.user_id
-                ? '<span class="name">' + escapeHtml(u.username) + '</span>'
-                : '<span class="name"><code>' + escapeHtml(u.user_id) + '</code></span>';
-            return '<div class="user-card">' +
-                '<div class="user-avatar">' + avatarHtml + '</div>' +
-                '<div class="user-info">' +
-                    nameHtml +
-                    '<div class="uid">' + escapeHtml(u.user_id) + '</div>' +
-                '</div>' +
-                '<div class="user-meta">' +
-                    '<button class="btn btn-danger btn-sm" onclick="removeBlacklist(\\'' + escapeHtml(u.user_id) + '\\')">Remove</button>' +
-                    '<div class="added-date">' + formatDate(u.added_at) + '</div>' +
-                '</div>' +
-                '</div>';
+            var avatarHtml = u.avatar_url ? '<img src="' + escapeHtml(u.avatar_url) + '" alt="" loading="lazy">' : '<div class="placeholder">' + (u.username ? u.username[0].toUpperCase() : '?') + '</div>';
+            var nameHtml = u.username && u.username !== u.user_id ? '<span class="name">' + escapeHtml(u.username) + '</span>' : '<span class="name"><code>' + escapeHtml(u.user_id) + '</code></span>';
+            var noteHtml = u.note ? '<div class="note-text">' + escapeHtml(u.note) + '</div>' : '';
+            return '<div class="user-card"><div class="user-avatar">' + avatarHtml + '</div><div class="user-info">' + nameHtml + '<div class="uid">' + escapeHtml(u.user_id) + '</div>' + noteHtml + '</div><div class="user-meta"><button class="btn btn-danger btn-sm" onclick="removeBlacklist(\\'' + escapeHtml(u.user_id) + '\\')">Remove</button><div class="added-date">' + formatDate(u.added_at) + '</div></div></div>';
         }
 
         async function loadBlacklist() {
-            const data = await apiFetch('/api/dashboard/blacklist');
+            var data = await apiFetch('/api/dashboard/blacklist');
             if (!data) return;
-            const table = document.getElementById('blacklist-table');
-            document.getElementById('blacklist-count').textContent = data.users ? data.users.length : 0;
-            
-            if (!data.users || data.users.length === 0) {
+            var table = document.getElementById('blacklist-table');
+            var count = data.users ? data.users.length : 0;
+            document.getElementById('blacklist-count').textContent = count;
+            document.getElementById('nav-blacklist').textContent = count;
+            document.getElementById('stat-blacklist').textContent = count;
+            if (count === 0) {
                 table.innerHTML = '<div class="empty-state">No blacklisted users.</div>';
                 return;
             }
-
-            table.innerHTML = data.users.map(u => renderUserCard(u)).join('');
+            table.innerHTML = data.users.map(function(u) { return renderUserCard(u); }).join('');
         }
 
         async function removeBlacklist(userId) {
-            const data = await apiFetch('/api/dashboard/blacklist/remove', {
-                method: 'POST',
-                body: JSON.stringify({ user_id: userId })
-            });
+            var data = await apiFetch('/api/dashboard/blacklist/remove', { method: 'POST', body: JSON.stringify({ user_id: userId }) });
             if (data && data.success) loadBlacklist();
         }
 
-        document.getElementById('blacklist-add-btn').addEventListener('click', async function() {
-            const input = document.getElementById('blacklist-user-id');
-            const userId = input.value.trim();
+        function doBlacklistAdd(userId, note, resultId, btn) {
             if (!userId) return;
-            const result = document.getElementById('blacklist-result');
-            const btn = this;
-            btn.disabled = true;
-            btn.textContent = 'Adding...';
-            const data = await apiFetch('/api/dashboard/blacklist/add', {
-                method: 'POST',
-                body: JSON.stringify({ user_id: userId })
-            });
-            btn.disabled = false;
-            btn.textContent = 'Add';
-            if (data && data.success) {
-                input.value = '';
-                // Show a rich success message with the user info
-                if (data.user && data.user.username) {
-                    const avatar = data.user.avatar_url
-                        ? '<img src="' + escapeHtml(data.user.avatar_url) + '" style="width:20px;height:20px;border-radius:50%;vertical-align:middle;margin-right:6px;">'
-                        : '';
-                    showAlert('blacklist-result', avatar + ' <strong>' + escapeHtml(data.user.username) + '</strong> blacklisted.', 'success');
-                } else {
-                    showAlert('blacklist-result', 'User blacklisted successfully.', 'success');
+            if (btn) { btn.disabled = true; btn.textContent = 'Adding...'; }
+            apiFetch('/api/dashboard/blacklist/add', { method: 'POST', body: JSON.stringify({ user_id: userId, note: note }) }).then(function(data) {
+                if (btn) { btn.disabled = false; btn.textContent = 'Add to Blacklist'; }
+                if (data && data.success) {
+                    document.getElementById('blacklist-user-id').value = '';
+                    document.getElementById('blacklist-note').value = '';
+                    document.getElementById('mod-bl-id').value = '';
+                    document.getElementById('mod-bl-note').value = '';
+                    showAlert(resultId, '<strong>' + escapeHtml(data.user && data.user.username ? data.user.username : userId) + '</strong> blacklisted.', 'success');
+                    loadBlacklist();
+                } else if (data && data.error) {
+                    showAlert(resultId, data.error, 'error');
                 }
-                loadBlacklist();
-            } else if (data && data.error) {
-                showAlert('blacklist-result', data.error, 'error');
-            }
+            });
+        }
+
+        document.getElementById('blacklist-add-btn').addEventListener('click', function() {
+            var userId = document.getElementById('blacklist-user-id').value.trim();
+            var note = document.getElementById('blacklist-note').value.trim();
+            doBlacklistAdd(userId, note, 'blacklist-result', this);
         });
 
         document.getElementById('blacklist-user-id').addEventListener('keydown', function(e) {
             if (e.key === 'Enter') document.getElementById('blacklist-add-btn').click();
         });
 
+        document.getElementById('mod-bl-btn').addEventListener('click', function() {
+            var userId = document.getElementById('mod-bl-id').value.trim();
+            var note = document.getElementById('mod-bl-note').value.trim();
+            doBlacklistAdd(userId, note, 'mod-bl-result', this);
+        });
+
+        document.getElementById('mod-bl-id').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') document.getElementById('mod-bl-btn').click();
+        });
+
+        async function loadModStats() {
+            var data = await apiFetch('/api/dashboard/data');
+            if (!data) return;
+            var g = await apiFetch('/api/dashboard/guild-info');
+            var el = document.getElementById('mod-stats');
+            var name = (g && !g.error && g.name) ? g.name : 'OSRP';
+            var members = (g && !g.error && g.member_count) ? g.member_count.toLocaleString() : '?';
+            el.innerHTML = '<div style="display:grid;gap:10px;">' +
+                '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text-secondary);">Server</span><strong>' + escapeHtml(name) + '</strong></div>' +
+                '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text-secondary);">Members</span><strong>' + members + '</strong></div>' +
+                '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text-secondary);">Appeals</span><strong>' + (data.total_appeals || 0) + '</strong></div>' +
+                '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text-secondary);">Blacklisted</span><strong>' + (data.blacklist_count || 0) + '</strong></div>' +
+                '<div style="display:flex;justify-content:space-between;padding:8px 0;"><span style="color:var(--text-secondary);">Pending</span><strong style="color:var(--orange);">' + (data.pending_appeals || 0) + '</strong></div>' +
+                '</div>';
+        }
+
+        var modObserver = new MutationObserver(function() {
+            var panel = document.getElementById('panel-modpanel');
+            if (panel && panel.classList.contains('active')) {
+                loadModStats();
+                modObserver.disconnect();
+            }
+        });
+        document.querySelectorAll('.nav-item[data-panel]').forEach(function(item) {
+            item.addEventListener('click', function() {
+                if (this.dataset.panel === 'modpanel') loadModStats();
+            });
+        });
     </script>
 </body>
 </html>"""
@@ -2443,6 +2670,7 @@ async def handle_dashboard_blacklist(request):
             "added_at": data.get("added_at", ""),
             "username": data.get("username", None),
             "avatar_url": data.get("avatar_url", None),
+            "note": data.get("note", ""),
         }
         # If no cached info, try to fetch it
         if not entry["username"]:
@@ -2471,12 +2699,14 @@ async def handle_dashboard_blacklist_add(request):
     try:
         body = await request.json()
         user_id = body.get("user_id", "").strip()
+        note = body.get("note", "").strip()
         if not user_id:
             return web.json_response({"error": "User ID required"}, status=400)
         
         entry = {
             "added_by": "dashboard",
             "added_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "note": note,
         }
         
         # Fetch Discord user info for a cooler display
