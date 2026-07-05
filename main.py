@@ -1,4 +1,4 @@
-import discord
+﻿import discord
 from discord.ext import commands, tasks
 import json
 import os
@@ -83,7 +83,6 @@ KICKED_FILE = os.path.join(os.path.dirname(__file__), "kicked.json")
 APPEAL_TOKENS_FILE = os.path.join(os.path.dirname(__file__), "appeal_tokens.json")
 BLACKLIST_FILE = os.path.join(os.path.dirname(__file__), "blacklist.json")
 
-last_command_channel: dict[str, int] = {}
 processed_cases: set[str] = set()
 processed_message_ids: set[int] = set()
 recent_punishments: dict[str, float] = {}  # user_id -> timestamp, to avoid duplicate Circle bot responses
@@ -717,36 +716,8 @@ async def on_message(message):
         await bot.process_commands(message)
         return
 
-    # Block external app / webhook messages and log to security channel
-    if message.application_id or message.webhook_id:
-        try:
-            await message.delete()
-            sec_channel = bot.get_channel(SECURITY_LOGS_CHANNEL_ID)
-            if sec_channel:
-                embed = discord.Embed(
-                    description="**__External Application Message Blocked__**",
-                    color=EMBED_COLOR,
-                )
-                embed.add_field(name="Channel", value=message.channel.mention, inline=True)
-                embed.add_field(name="Author", value=str(message.author), inline=True)
-                embed.add_field(name="Content", value=message.content[:500] or "*(embed only)*", inline=False)
-                if message.embeds:
-                    embed.add_field(name="Embed Title", value=(message.embeds[0].title or "N/A")[:200], inline=False)
-                embed.set_footer(text=f"User ID: {message.author.id}")
-                await sec_channel.send(embed=embed)
-        except Exception as e:
-            print(f"[SECURITY] Failed to block external message: {e}")
-        return
-
     guild_id = str(message.guild.id)
     guild = message.guild
-
-    # â”€â”€ Track which channel the last punishment command was issued in â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    if not message.author.bot and message.content and message.content.startswith("!"):
-        cmd = message.content.lstrip("!").lower().split()[0]
-        if any(cmd.startswith(p.replace(" ", "")) for p in POINTS):
-            if has_any_role(message.author, PUNISHER_ROLES):
-                last_command_channel[guild_id] = message.channel.id
 
     # â”€â”€ React to Circle bot punishment embeds â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if message.author.bot and message.embeds:
@@ -798,13 +769,9 @@ async def on_message(message):
                 if last_ts and (now - last_ts) < 3:
                     recent_punishments.pop(user_id_str, None)
                 else:
-                    channel_id = last_command_channel.get(guild_id)
-                    target_channel = (
-                        message.guild.get_channel(channel_id)
-                        if channel_id else message.channel
-                    )
-                    pts_msg = await target_channel.send(
-                        f"{mention} now has **{current_points} {point_word}**."
+                    pts_msg = await message.channel.send(
+                        f"{mention} now has **{current_points} {point_word}**." 
+                        f" ({matched_punishment[0].title()}, +{matched_punishment[1]})"
                     )
                     asyncio.create_task(delete_after_delay(pts_msg, 25))
                 
@@ -1747,7 +1714,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             --orange: #fb923c;
             --purple: #a78bfa;
             --radius: 10px;
-            --sidebar-w: 220px;
         }
         body {
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
@@ -1810,101 +1776,23 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         .login-card button:active { transform: scale(0.98); }
 
         .app-layout {
-            display: flex;
-            min-height: 100vh;
-        }
-        .sidebar {
-            width: var(--sidebar-w);
-            background: var(--bg-secondary);
-            border-right: 1px solid var(--border);
-            display: flex;
-            flex-direction: column;
-            flex-shrink: 0;
-            position: sticky;
-            top: 0;
-            height: 100vh;
-        }
-        .sidebar-brand {
-            padding: 20px 16px;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .sidebar-brand .icon {
-            width: 36px; height: 36px;
-            background: linear-gradient(135deg, var(--accent), #0288d1);
-            border-radius: 10px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 16px; font-weight: 800; color: #fff;
-            flex-shrink: 0;
-        }
-        .sidebar-brand h2 { font-size: 14px; font-weight: 700; line-height: 1.2; }
-        .sidebar-brand .sub { font-size: 10px; color: var(--text-secondary); }
-        .sidebar-nav {
-            flex: 1;
-            padding: 12px 8px;
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-        }
-        .nav-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px 12px;
-            border-radius: 8px;
-            cursor: pointer;
-            color: var(--text-secondary);
-            font-size: 13px;
-            font-weight: 500;
-            transition: all 0.15s;
-            border: none;
-            background: none;
-            width: 100%;
-            text-align: left;
-            font-family: inherit;
-        }
-        .nav-item:hover { background: var(--bg-card); color: var(--text-primary); }
-        .nav-item.active { background: var(--accent); color: #fff; font-weight: 600; }
-        .nav-item .nav-badge {
-            margin-left: auto;
-            background: var(--bg-card);
-            border-radius: 10px;
-            padding: 1px 8px;
-            font-size: 11px;
-            color: var(--text-secondary);
-            font-weight: 600;
-        }
-        .nav-item.active .nav-badge { background: rgba(255,255,255,0.2); color: #fff; }
-        .nav-divider {
-            height: 1px;
-            background: var(--border);
-            margin: 8px 12px;
-        }
-        .sidebar-footer {
-            padding: 12px 8px;
-            border-top: 1px solid var(--border);
-        }
-        .sidebar-footer .nav-item { font-size: 12px; }
-
-        .main-area {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            min-width: 0;
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 20px;
         }
         .topbar {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px 24px;
+            margin-bottom: 20px;
             display: flex;
             align-items: center;
             gap: 16px;
-            padding: 16px 24px;
-            background: var(--bg-secondary);
-            border-bottom: 1px solid var(--border);
         }
         .topbar-info { flex: 1; min-width: 0; }
-        .topbar-info h1 { font-size: 18px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .topbar-info .sub { font-size: 12px; color: var(--text-secondary); margin-top: 1px; }
+        .topbar-info h1 { font-size: 20px; font-weight: 700; }
+        .topbar-info .sub { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
         .topbar-actions { display: flex; gap: 8px; flex-shrink: 0; }
         .topbar-actions button {
             background: var(--bg-card);
@@ -1922,11 +1810,48 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         .topbar-actions button.danger { color: var(--red); }
         .topbar-actions button.danger:hover { background: rgba(248, 81, 73, 0.1); }
 
-        .content {
-            flex: 1;
-            padding: 24px;
-            overflow-y: auto;
+        .nav-bar {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 20px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 6px;
         }
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.15s;
+            border: none;
+            background: none;
+            font-family: inherit;
+            white-space: nowrap;
+        }
+        .nav-item:hover { background: var(--bg-card); color: var(--text-primary); }
+        .nav-item.active { background: var(--accent); color: #fff; font-weight: 600; }
+        .nav-item .nav-badge {
+            margin-left: 4px;
+            background: var(--bg-card);
+            border-radius: 10px;
+            padding: 1px 8px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+        .nav-item.active .nav-badge { background: rgba(255,255,255,0.2); color: #fff; }
+        .nav-spacer { flex: 1; }
+        .nav-item.danger { color: var(--red); }
+        .nav-item.danger:hover { background: rgba(248, 81, 73, 0.1); }
+
+        .content { }
 
         .panel { display: none; }
         .panel.active { display: block; }
@@ -2132,15 +2057,13 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
         .blame-text { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
 
-        @media (max-width: 900px) {
-            .sidebar { width: 56px; }
-            .sidebar-brand h2, .sidebar-brand .sub, .nav-item span, .nav-badge { display: none; }
-            .nav-item { justify-content: center; padding: 10px; }
-            .sidebar-brand { justify-content: center; }
+        @media (max-width: 700px) {
+            .app-layout { padding: 12px; }
+            .nav-bar { flex-wrap: wrap; }
+            .nav-item { padding: 8px 12px; font-size: 12px; }
             .panel-grid { grid-template-columns: 1fr; }
             .mod-quick-grid { grid-template-columns: 1fr; }
-            .content { padding: 16px; }
-            .topbar { padding: 12px 16px; }
+            .stats-row { grid-template-columns: repeat(2, 1fr); }
         }
     </style>
 </head>
@@ -2157,61 +2080,46 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     </div>
 
     <div class="app-layout hidden" id="dashboard-page">
-        <nav class="sidebar">
-            <div class="sidebar-brand">
-                <div class="icon">OS</div>
-                <div>
-                    <h2>OSRP</h2>
-                    <div class="sub">Staff Panel</div>
-                </div>
+        <div class="topbar">
+            <div class="topbar-info">
+                <h1 id="guild-name">OSRP Staff Dashboard</h1>
+                <div class="sub" id="guild-subtitle">Loading server info...</div>
             </div>
-            <div class="sidebar-nav">
-                <button class="nav-item active" data-panel="all">
-                    <span style="font-weight:600;">&#8319;</span> <span>All Appeals</span>
-                    <span class="nav-badge" id="nav-all">0</span>
-                </button>
-                <button class="nav-item" data-panel="pending">
-                    <span style="color:var(--orange);">&#9679;</span> <span>Pending</span>
-                    <span class="nav-badge" id="nav-pending">0</span>
-                </button>
-                <button class="nav-item" data-panel="approved">
-                    <span style="color:var(--green);">&#9679;</span> <span>Approved</span>
-                    <span class="nav-badge" id="nav-approved">0</span>
-                </button>
-                <button class="nav-item" data-panel="denied">
-                    <span style="color:var(--red);">&#9679;</span> <span>Denied</span>
-                    <span class="nav-badge" id="nav-denied">0</span>
-                </button>
-                <div class="nav-divider"></div>
-                <button class="nav-item" data-panel="blacklist">
-                    <span style="color:var(--red);">&#9898;</span> <span>Blacklist</span>
-                    <span class="nav-badge" id="nav-blacklist">0</span>
-                </button>
-                <div class="nav-divider"></div>
-                <button class="nav-item" data-panel="modpanel">
-                    <span>&#9881;</span> <span>Mod Panel</span>
-                </button>
+            <div class="topbar-actions">
+                <button id="refresh-btn">Refresh</button>
+                <button class="danger" id="logout-btn">Sign Out</button>
             </div>
-            <div class="sidebar-footer">
-                <button class="nav-item danger" id="logout-btn">
-                    <span>&#10140;</span> <span>Sign Out</span>
-                </button>
-            </div>
-        </nav>
+        </div>
 
-        <div class="main-area">
-            <div class="topbar">
-                <div class="topbar-info">
-                    <h1 id="guild-name">OSRP Staff Dashboard</h1>
-                    <div class="sub" id="guild-subtitle">Loading server info...</div>
-                </div>
-                <div class="topbar-actions">
-                    <button id="refresh-btn">Refresh</button>
-                </div>
-            </div>
+        <div class="nav-bar" id="nav-bar">
+            <button class="nav-item active" data-panel="all">
+                All Appeals
+                <span class="nav-badge" id="nav-all">0</span>
+            </button>
+            <button class="nav-item" data-panel="pending">
+                <span style="color:var(--orange);">&#9679;</span> Pending
+                <span class="nav-badge" id="nav-pending">0</span>
+            </button>
+            <button class="nav-item" data-panel="approved">
+                <span style="color:var(--green);">&#9679;</span> Approved
+                <span class="nav-badge" id="nav-approved">0</span>
+            </button>
+            <button class="nav-item" data-panel="denied">
+                <span style="color:var(--red);">&#9679;</span> Denied
+                <span class="nav-badge" id="nav-denied">0</span>
+            </button>
+            <span class="nav-spacer"></span>
+            <button class="nav-item" data-panel="blacklist">
+                Blacklist
+                <span class="nav-badge" id="nav-blacklist">0</span>
+            </button>
+            <button class="nav-item" data-panel="modpanel">
+                &#9881; Mod Panel
+            </button>
+        </div>
 
-            <div class="content">
-                <div class="stats-row" id="stats">
+        <div class="content">
+            <div class="stats-row" id="stats">
                     <div class="stat-card">
                         <div class="stat-top"><div class="stat-dot accent"></div><span class="stat-label">Total Appeals</span></div>
                         <div class="num accent" id="stat-total">--</div>
@@ -2556,7 +2464,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         async function loadModStats() {
             var data = await apiFetch('/api/dashboard/data');
             if (!data) return;
-            var g = await apiFetch('/api/dashboard/guild-info');
             var el = document.getElementById('mod-stats');
             el.innerHTML = '<div style="display:grid;gap:10px;">' +
                 '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text-secondary);">Appeals</span><strong>' + (data.total_appeals || 0) + '</strong></div>' +
@@ -2565,13 +2472,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                 '</div>';
         }
 
-        var modObserver = new MutationObserver(function() {
-            var panel = document.getElementById('panel-modpanel');
-            if (panel && panel.classList.contains('active')) {
-                loadModStats();
-                modObserver.disconnect();
-            }
-        });
         document.querySelectorAll('.nav-item[data-panel]').forEach(function(item) {
             item.addEventListener('click', function() {
                 if (this.dataset.panel === 'modpanel') loadModStats();
