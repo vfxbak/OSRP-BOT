@@ -640,10 +640,10 @@ class BanAppealModal(discord.ui.Modal, title="Ban Appeal Form"):
             async def send_deny_dm(self, user_id, guild):
                 try:
                     user = await bot.fetch_user(int(user_id))
-                    three_months = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=90)).strftime("%B %d, %Y")
+                    two_months = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=60)).strftime("%B %d, %Y")
                     await user.send(
                         f"Your ban appeal for **{guild.name}** has been reviewed and unfortunately has been **denied**.\n\n"
-                        f"You may submit another appeal after **{three_months}** (3 months from today).\n\n"
+                        f"You may submit another appeal after **{two_months}** (2 months from today).\n\n"
                         f"We appreciate your understanding."
                     )
                 except Exception:
@@ -2940,10 +2940,10 @@ async def sampleapprove(ctx):
 @commands.has_permissions(manage_guild=True)
 async def sampledeny(ctx):
     """Preview the deny DM message."""
-    three_months = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=90)).strftime("%B %d, %Y")
+    two_months = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=60)).strftime("%B %d, %Y")
     msg = (
-        f"Your ban appeal for **{ctx.guild.name}** has been reviewed and unfortunately has been **denied**.\n\n"
-        f"You may submit another appeal after **{three_months}** (3 months from today).\n\n"
+            f"Your ban appeal for **{ctx.guild.name}** has been reviewed and unfortunately has been **denied**.\n\n"
+            f"You may submit another appeal after **{two_months}** (2 months from today).\n\n"
         f"We appreciate your understanding."
     )
     await ctx.send(msg)
