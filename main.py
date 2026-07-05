@@ -2966,10 +2966,28 @@ async def samplewelcome(ctx):
     view.add_item(discord.ui.Button(
         emoji=discord.PartialEmoji(name="info", id=1523432618866118767),
         label="Dashboard",
-        url="https://discord.com/channels/1517682110842798192",
-        style=discord.ButtonStyle.link
-    ))
+        url="https://discord.com/channels/1517672283513294868/1517682110842798192",
+            style=discord.ButtonStyle.link
+        ))
+        
     await ctx.send(content=content, view=view)
+
+
+@bot.command()
+@commands.has_permissions(manage_guild=True)
+async def checkperms(ctx):
+    """Check bot permissions in the dashboard channel."""
+    channel = ctx.guild.get_channel(1517682110842798192)
+    if not channel:
+        return await ctx.send("Dashboard channel `1517682110842798192` not found in this guild.")
+    bot_member = ctx.guild.me
+    perms = channel.permissions_for(bot_member)
+    needed = ["view_channel", "send_messages", "read_message_history", "embed_links"]
+    lines = [f"Bot permissions in <#{channel.id}>:"]
+    for p in needed:
+        lines.append(f"- **{p}**: {'✅' if getattr(perms, p, False) else '❌'}")
+    await ctx.send("\n".join(lines))
+
 
 
 
