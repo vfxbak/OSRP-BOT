@@ -54,7 +54,8 @@ APPEAL_REVIEW_ROLES = {
 }
 
 POINT_THRESHOLD  = 10
-APPEAL_COOLDOWN_DAYS = 30  # Must wait 1 month before appealing
+FIRST_APPEAL_COOLDOWN_DAYS = 14   # Must wait 2 weeks before first appeal
+APPEAL_COOLDOWN_DAYS = 60         # Must wait 2 months after a denial
 KICK_REMINDER_WINDOW_MINUTES = 30  # Only remind if user rejoins within 30 min
 
 # Channels
@@ -67,6 +68,8 @@ INGAME_MODERATING_ROLE_ID = 1520870451923124415
 
 CIRCLE_MODLOGS_CHANNEL_ID = 1518943358750425328
 SECURITY_LOGS_CHANNEL_ID = 1519696216961847366
+
+DIRECTORSHIP_PING_EXEMPT_ROLE = 1517688590442692779
 
 GUILD_ID = 1517672283513294868
 
@@ -492,12 +495,11 @@ async def on_member_join(member: discord.Member):
     
     embed = discord.Embed(
         title="Welcome to the community!",
-        description=f"**Oklahoma State Roleplay**\n\nWelcome {member.mention}, you are our **{ordinal} member**!",
+        description=f"**Oklahoma State Roleplay**\n\n{member.mention} You are our **{ordinal}** member!",
         color=EMBED_COLOR,
     )
-    embed.set_thumbnail(url=member.display_avatar.url)
-    if guild.icon:
-        embed.set_author(name="Oklahoma State Roleplay", icon_url=guild.icon.url)
+    embed.set_thumbnail(url=guild.icon.url if guild.icon else member.display_avatar.url)
+    embed.set_image(url="https://media.discordapp.net/attachments/1523037886977409208/1523418949646155837/IMG_7241.png")
     embed.set_footer(text=f"Member #{member_count}")
     
     class WelcomeView(discord.ui.View):
@@ -733,6 +735,30 @@ async def on_message(message):
     guild_id = str(message.guild.id)
     guild = message.guild
 
+    # Directorship ping protection
+    if message.mentions and not message.author.bot:
+        exempt = message.author.get_role(DIRECTORSHIP_PING_EXEMPT_ROLE)
+        if not exempt:
+            has_directorship_ping = False
+            for mentioned in message.mentions:
+                if isinstance(mentioned, discord.Member) and mentioned.get_role(DIRECTORSHIP_ROLE_ID):
+                    has_directorship_ping = True
+                    break
+            if not has_directorship_ping and message.reference and message.reference.resolved:
+                ref = message.reference.resolved
+                if isinstance(ref, discord.Message) and isinstance(ref.author, discord.Member) and ref.author.get_role(DIRECTORSHIP_ROLE_ID):
+                    has_directorship_ping = True
+            if has_directorship_ping:
+                try:
+                    await message.delete()
+                    embed = discord.Embed(
+                        description="**Please do not @mention directive**\n\nDirectorship should not be pinged unless it is an emergency. Please contact them via DM instead.",
+                        color=EMBED_COLOR,
+                    )
+                    embed.set_footer(text="This message was automatically removed.")
+                    await message.channel.send(embed=embed)
+                except Exception:
+                    pass
     # â”€â”€ React to Circle bot punishment embeds â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if message.author.bot and message.embeds:
         embed = message.embeds[0]
@@ -1505,7 +1531,7 @@ async def handle_appeal_info(request):
             if member:
                 discord_username = str(member)
     
-    # Check cooldown — only applies if user already has a denied appeal
+    # Check cooldown
     now = datetime.datetime.now(datetime.timezone.utc)
     user_appeals = {k: v for k, v in appeals_db.items() if v.get("user_id") == user_id}
     denied_appeals = [a for a in user_appeals.values() if a.get("status") == "denied"]
@@ -1513,11 +1539,18 @@ async def handle_appeal_info(request):
     cooldown_active = False
     cooldown_ends = ""
     if denied_appeals:
+        # Subsequent appeal: 2 month cooldown from last denial
         latest_denied = max(denied_appeals, key=lambda a: a.get("submitted_at", ""))
         denied_at = datetime.datetime.fromisoformat(latest_denied["submitted_at"])
         days_since_denied = (now - denied_at).days
         cooldown_active = days_since_denied < APPEAL_COOLDOWN_DAYS
         cooldown_ends = (denied_at + datetime.timedelta(days=APPEAL_COOLDOWN_DAYS)).strftime("%Y-%m-%d %H:%M UTC")
+    else:
+        # First appeal: 2 week cooldown from token creation
+        created_at = datetime.datetime.fromisoformat(token_data["created_at"])
+        days_since_created = (now - created_at).days
+        cooldown_active = days_since_created < FIRST_APPEAL_COOLDOWN_DAYS
+        cooldown_ends = (created_at + datetime.timedelta(days=FIRST_APPEAL_COOLDOWN_DAYS)).strftime("%Y-%m-%d %H:%M UTC")
     
     return web.json_response({
         "discord_username": discord_username,
@@ -1565,7 +1598,7 @@ async def handle_appeal_submit(request):
     if discord_id != user_id:
         return web.json_response({"error": "Discord ID mismatch. This appeal link is not for this account."}, status=403)
     
-    # Check cooldown — only applies if user already has a denied appeal
+    # Check cooldown
     now = datetime.datetime.now(datetime.timezone.utc)
     user_appeals = {k: v for k, v in appeals_db.items() if v.get("user_id") == user_id}
     denied_appeals = [a for a in user_appeals.values() if a.get("status") == "denied"]
@@ -1576,7 +1609,16 @@ async def handle_appeal_submit(request):
         if days_since_denied < APPEAL_COOLDOWN_DAYS:
             cooldown_ends = (denied_at + datetime.timedelta(days=APPEAL_COOLDOWN_DAYS)).strftime("%Y-%m-%d %H:%M UTC")
             return web.json_response({
-                "error": f"You are still on cooldown. You can submit an appeal after {cooldown_ends}."
+                "error": f"You are still on cooldown. You must wait 2 months between appeals. You can submit after {cooldown_ends}."
+            }, status=400)
+    else:
+        # First appeal: 2 week cooldown from token creation
+        created_at = datetime.datetime.fromisoformat(token_data["created_at"])
+        days_since_created = (now - created_at).days
+        if days_since_created < FIRST_APPEAL_COOLDOWN_DAYS:
+            cooldown_ends = (created_at + datetime.timedelta(days=FIRST_APPEAL_COOLDOWN_DAYS)).strftime("%Y-%m-%d %H:%M UTC")
+            return web.json_response({
+                "error": f"You must wait 2 weeks before your first appeal. You can submit after {cooldown_ends}."
             }, status=400)
     
     # Create the appeal
@@ -1870,38 +1912,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         .panel { display: none; }
         .panel.active { display: block; }
 
-        .stats-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 12px;
-            margin-bottom: 24px;
-        }
-        .stat-card {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 18px;
-            position: relative;
-            overflow: hidden;
-        }
-        .stat-card .stat-top { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
-        .stat-card .stat-dot {
-            width: 8px; height: 8px;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
-        .stat-card .stat-dot.accent { background: var(--accent); }
-        .stat-card .stat-dot.orange { background: var(--orange); }
-        .stat-card .stat-dot.green { background: var(--green); }
-        .stat-card .stat-dot.red { background: var(--red); }
-        .stat-card .stat-label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.3px; }
-        .stat-card .num { font-size: 28px; font-weight: 800; }
-        .stat-card .num.accent { color: var(--accent); }
-        .stat-card .num.orange { color: var(--orange); }
-        .stat-card .num.green { color: var(--green); }
-        .stat-card .num.red { color: var(--red); }
-        .stat-card .stat-sub { font-size: 10px; color: var(--text-secondary); margin-top: 4px; }
-
         .card {
             background: var(--bg-secondary);
             border: 1px solid var(--border);
@@ -2067,8 +2077,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         .skeleton-text { height: 14px; margin-bottom: 8px; }
         .skeleton-text:last-child { width: 60%; }
 
-        .mod-quick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-
         .blame-text { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
 
         @media (max-width: 700px) {
@@ -2110,52 +2118,14 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                 All Appeals
                 <span class="nav-badge" id="nav-all">0</span>
             </button>
-            <button class="nav-item" data-panel="pending">
-                <span style="color:var(--orange);">&#9679;</span> Pending
-                <span class="nav-badge" id="nav-pending">0</span>
-            </button>
-            <button class="nav-item" data-panel="approved">
-                <span style="color:var(--green);">&#9679;</span> Approved
-                <span class="nav-badge" id="nav-approved">0</span>
-            </button>
-            <button class="nav-item" data-panel="denied">
-                <span style="color:var(--red);">&#9679;</span> Denied
-                <span class="nav-badge" id="nav-denied">0</span>
-            </button>
             <span class="nav-spacer"></span>
             <button class="nav-item" data-panel="blacklist">
                 Blacklist
                 <span class="nav-badge" id="nav-blacklist">0</span>
             </button>
-            <button class="nav-item" data-panel="modpanel">
-                &#9881; Mod Panel
-            </button>
         </div>
 
         <div class="content">
-            <div class="stats-row" id="stats">
-                    <div class="stat-card">
-                        <div class="stat-top"><div class="stat-dot accent"></div><span class="stat-label">Total Appeals</span></div>
-                        <div class="num accent" id="stat-total">--</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-top"><div class="stat-dot orange"></div><span class="stat-label">Pending</span></div>
-                        <div class="num orange" id="stat-pending">--</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-top"><div class="stat-dot green"></div><span class="stat-label">Approved</span></div>
-                        <div class="num green" id="stat-approved">--</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-top"><div class="stat-dot red"></div><span class="stat-label">Denied</span></div>
-                        <div class="num red" id="stat-denied">--</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-top"><div class="stat-dot" style="background:var(--red);"></div><span class="stat-label">Blacklisted</span></div>
-                        <div class="num red" id="stat-blacklist">--</div>
-                    </div>
-                </div>
-
                 <!-- Panel: All Appeals -->
                 <div class="panel active" id="panel-all">
                     <div class="card panel-full">
@@ -2182,67 +2152,38 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
                 <!-- Panel: Blacklist -->
                 <div class="panel" id="panel-blacklist">
-                    <div class="panel-grid">
-                        <div class="card">
-                            <div class="card-header">
-                                <h2>Blacklist a User</h2>
-                            </div>
-                            <div class="card-body">
-                                <div id="blacklist-result" class="hidden"></div>
-                                <div class="form-group">
-                                    <label>Discord User ID</label>
-                                    <input type="text" id="blacklist-user-id" placeholder="Paste Discord user ID here">
-                                </div>
-                                <div class="form-group">
-                                    <label>Reason / Note</label>
-                                    <textarea id="blacklist-note" placeholder="Why is this user being blacklisted?" rows="3"></textarea>
-                                </div>
-                                <div class="form-group">
-                                    <label>Duration</label>
-                                    <select id="blacklist-duration" style="width:100%;background:var(--bg-primary);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text-primary);font-size:13px;font-family:inherit;">
-                                        <option value="3m">3 Months</option>
-                                        <option value="6m">6 Months</option>
-                                        <option value="permanent" selected>Permanent</option>
-                                    </select>
-                                </div>
-                                <button id="blacklist-add-btn" class="btn btn-primary" style="width:100%;">Add to Blacklist</button>
-                            </div>
+                    <div class="card panel-full">
+                        <div class="card-header">
+                            <h2>Blacklist a User</h2>
                         </div>
-                        <div class="card">
-                            <div class="card-header">
-                                <h2>Blacklisted Users</h2>
-                                <span class="badge" id="blacklist-count">0</span>
+                        <div class="card-body">
+                            <div id="blacklist-result" class="hidden"></div>
+                            <div class="form-group">
+                                <label>Discord User ID</label>
+                                <input type="text" id="blacklist-user-id" placeholder="Paste Discord user ID here">
                             </div>
-                            <div class="card-body" id="blacklist-table">
-                                <div class="empty-state">No blacklisted users.</div>
+                            <div class="form-group">
+                                <label>Reason / Note</label>
+                                <textarea id="blacklist-note" placeholder="Why is this user being blacklisted?" rows="3"></textarea>
                             </div>
+                            <div class="form-group">
+                                <label>Duration</label>
+                                <select id="blacklist-duration" style="width:100%;background:var(--bg-primary);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text-primary);font-size:13px;font-family:inherit;">
+                                    <option value="3m">3 Months</option>
+                                    <option value="6m">6 Months</option>
+                                    <option value="permanent" selected>Permanent</option>
+                                </select>
+                            </div>
+                            <button id="blacklist-add-btn" class="btn btn-primary" style="width:100%;">Add to Blacklist</button>
                         </div>
                     </div>
-                </div>
-
-                <!-- Panel: Mod Panel -->
-                <div class="panel" id="panel-modpanel">
-                    <div class="mod-quick-grid">
-                        <div class="card">
-                            <div class="card-header"><h2>Quick Blacklist</h2></div>
-                            <div class="card-body">
-                                <div class="form-group">
-                                    <label>User ID</label>
-                                    <input type="text" id="mod-bl-id" placeholder="Discord user ID">
-                                </div>
-                                <div class="form-group">
-                                    <label>Reason</label>
-                                    <textarea id="mod-bl-note" placeholder="Why?" rows="2"></textarea>
-                                </div>
-                                <button id="mod-bl-btn" class="btn btn-danger" style="width:100%;">Blacklist User</button>
-                                <div id="mod-bl-result" style="margin-top:10px;"></div>
-                            </div>
+                    <div class="card panel-full" style="margin-top:16px;">
+                        <div class="card-header">
+                            <h2>Blacklisted Users</h2>
+                            <span class="badge" id="blacklist-count">0</span>
                         </div>
-                        <div class="card">
-                            <div class="card-header"><h2>Server Stats</h2></div>
-                            <div class="card-body" id="mod-stats">
-                                <div class="empty-state">Loading stats...</div>
-                            </div>
+                        <div class="card-body" id="blacklist-table">
+                            <div class="empty-state">No blacklisted users.</div>
                         </div>
                     </div>
                 </div>
@@ -2326,15 +2267,8 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                 document.getElementById('guild-name').textContent = (guild.name || 'OSRP') + ' - Staff Dashboard';
                 document.getElementById('guild-subtitle').textContent = 'Ban Appeal Management';
             }
-            document.getElementById('stat-total').textContent = data.total_appeals || 0;
-            document.getElementById('stat-pending').textContent = data.pending_appeals || 0;
-            document.getElementById('stat-approved').textContent = data.approved_appeals || 0;
-            document.getElementById('stat-denied').textContent = data.denied_appeals || 0;
             document.getElementById('appeals-count').textContent = data.total_appeals || 0;
             document.getElementById('nav-all').textContent = data.total_appeals || 0;
-            document.getElementById('nav-pending').textContent = data.pending_appeals || 0;
-            document.getElementById('nav-approved').textContent = data.approved_appeals || 0;
-            document.getElementById('nav-denied').textContent = data.denied_appeals || 0;
 
             await Promise.all([ loadAppeals(), loadBlacklist() ]);
         }
@@ -2475,22 +2409,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             if (e.key === 'Enter') document.getElementById('mod-bl-btn').click();
         });
 
-        async function loadModStats() {
-            var data = await apiFetch('/api/dashboard/data');
-            if (!data) return;
-            var el = document.getElementById('mod-stats');
-            el.innerHTML = '<div style="display:grid;gap:10px;">' +
-                '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text-secondary);">Appeals</span><strong>' + (data.total_appeals || 0) + '</strong></div>' +
-                '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><span style="color:var(--text-secondary);">Blacklisted</span><strong>' + (data.blacklist_count || 0) + '</strong></div>' +
-                '<div style="display:flex;justify-content:space-between;padding:8px 0;"><span style="color:var(--text-secondary);">Pending</span><strong style="color:var(--orange);">' + (data.pending_appeals || 0) + '</strong></div>' +
-                '</div>';
-        }
 
-        document.querySelectorAll('.nav-item[data-panel]').forEach(function(item) {
-            item.addEventListener('click', function() {
-                if (this.dataset.panel === 'modpanel') loadModStats();
-            });
-        });
     </script>
 </body>
 </html>"""
