@@ -496,14 +496,14 @@ async def on_member_join(member: discord.Member):
         ordinal = get_ordinal(member_count)
         
         content = (
-            f"Welcome to **Oklahoma State Roleplay** {member.mention} who joined.\n"
+            f"Welcome to **Oklahoma State Roleplay** {member.mention}.\n"
             f"You are our **{ordinal}** member!"
         )
         
         view = discord.ui.View()
         view.add_item(discord.ui.Button(
             emoji=discord.PartialEmoji(name="member", id=1523432455091261500),
-            label=f"Member Count — {member_count}",
+            label=f"{member_count}",
             style=discord.ButtonStyle.secondary,
             disabled=True
         ))
@@ -2953,13 +2953,13 @@ async def samplewelcome(ctx):
     member_count = sum(1 for m in ctx.guild.members if not m.bot)
     ordinal = get_ordinal(member_count)
     content = (
-        f"Welcome to **Oklahoma State Roleplay** {ctx.author.mention} who joined.\n"
+        f"Welcome to **Oklahoma State Roleplay** {ctx.author.mention}.\n"
         f"You are our **{ordinal}** member!"
     )
     view = discord.ui.View()
     view.add_item(discord.ui.Button(
         emoji=discord.PartialEmoji(name="member", id=1523432455091261500),
-        label=f"Member Count — {member_count}",
+        label=f"{member_count}",
         style=discord.ButtonStyle.secondary,
         disabled=True
     ))
