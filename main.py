@@ -65,13 +65,16 @@ INGAME_KICK_CHANNEL_ID = 1521216668402188461  # ERLC webhook channel (kick + joi
 INGAME_REMINDER_CHANNEL_ID = 1519468672849150022
 INGAME_MODERATING_ROLE_ID = 1520870451923124415
 
+CIRCLE_MODLOGS_CHANNEL_ID = 1518943358750425328
+SECURITY_LOGS_CHANNEL_ID = 1519696216961847366
+
 GUILD_ID = 1517672283513294868
 
 BASE_URL_RAW = os.getenv("BASE_URL", "https://osrp-bot-production.up.railway.app")
 BASE_URL = ("https://" + BASE_URL_RAW) if not BASE_URL_RAW.startswith("http://") and not BASE_URL_RAW.startswith("https://") else BASE_URL_RAW
 BASE_URL = BASE_URL.rstrip("/")
 
-EMBED_COLOR = 0x01D3FF
+EMBED_COLOR = 0x4FC3F7
 
 POINTS_FILE = os.path.join(os.path.dirname(__file__), "points.json")
 CASES_FILE  = os.path.join(os.path.dirname(__file__), "cases.json")
@@ -79,7 +82,6 @@ APPEALS_FILE = os.path.join(os.path.dirname(__file__), "appeals.json")
 KICKED_FILE = os.path.join(os.path.dirname(__file__), "kicked.json")
 APPEAL_TOKENS_FILE = os.path.join(os.path.dirname(__file__), "appeal_tokens.json")
 BLACKLIST_FILE = os.path.join(os.path.dirname(__file__), "blacklist.json")
-NOTES_FILE = os.path.join(os.path.dirname(__file__), "notes.json")
 
 last_command_channel: dict[str, int] = {}
 processed_cases: set[str] = set()
@@ -105,7 +107,7 @@ appeals_db = load_json(APPEALS_FILE)
 kicked_db = load_json(KICKED_FILE)
 appeal_tokens_db = load_json(APPEAL_TOKENS_FILE)
 blacklist_db = load_json(BLACKLIST_FILE)
-notes_db = load_json(NOTES_FILE)
+
 
 
 MANAGEMENT_ROLE_IDS = {MANAGEMENT_ROLE_ID, DIRECTORSHIP_ROLE_ID}
@@ -715,6 +717,27 @@ async def on_message(message):
         await bot.process_commands(message)
         return
 
+    # Block external app / webhook messages and log to security channel
+    if message.application_id or message.webhook_id:
+        try:
+            await message.delete()
+            sec_channel = bot.get_channel(SECURITY_LOGS_CHANNEL_ID)
+            if sec_channel:
+                embed = discord.Embed(
+                    description="**__External Application Message Blocked__**",
+                    color=EMBED_COLOR,
+                )
+                embed.add_field(name="Channel", value=message.channel.mention, inline=True)
+                embed.add_field(name="Author", value=str(message.author), inline=True)
+                embed.add_field(name="Content", value=message.content[:500] or "*(embed only)*", inline=False)
+                if message.embeds:
+                    embed.add_field(name="Embed Title", value=(message.embeds[0].title or "N/A")[:200], inline=False)
+                embed.set_footer(text=f"User ID: {message.author.id}")
+                await sec_channel.send(embed=embed)
+        except Exception as e:
+            print(f"[SECURITY] Failed to block external message: {e}")
+        return
+
     guild_id = str(message.guild.id)
     guild = message.guild
 
@@ -870,6 +893,8 @@ async def handle_ban_appeal_dm(user_id, punishment_type: str, total_points: int)
     else:
         token = existing_token
     
+    dm_sent = False
+    dm_error = None
     try:
         user = await bot.fetch_user(int(user_id_str))
         appeal_url = f"{BASE_URL}/appeal"
@@ -880,13 +905,42 @@ async def handle_ban_appeal_dm(user_id, punishment_type: str, total_points: int)
             f"**This code is unique to you, sharing it can result in a permanent ban\n_ _\nwithout appeal from the server.**"
         )
         await user.send(msg)
+        dm_sent = True
         print(f"[APPEAL] DM sent to {user_id} with appeal token {token}")
     except discord.Forbidden:
+        dm_error = "DMs closed"
         print(f"[APPEAL] Cannot DM {user_id} - DMs closed")
     except discord.NotFound:
+        dm_error = "User not found"
         print(f"[APPEAL] User {user_id} not found")
     except Exception as e:
+        dm_error = str(e)
         print(f"[APPEAL] Failed to send DM to {user_id}: {e}")
+
+    # Send status to Circle modlogs channel
+    guild = bot.get_guild(GUILD_ID)
+    if guild:
+        modlog_channel = guild.get_channel(CIRCLE_MODLOGS_CHANNEL_ID)
+        if modlog_channel:
+            status_text = "DM Sent" if dm_sent else f"DM Failed ({dm_error})"
+            status_color = EMBED_COLOR if dm_sent else 0xf85149
+            log_embed = discord.Embed(
+                description=f"**__Appeal Link DM {'Sent' if dm_sent else 'Failed'}__**",
+                color=status_color,
+            )
+            try:
+                u = await bot.fetch_user(int(user_id_str))
+                log_embed.set_thumbnail(url=u.display_avatar.url)
+                log_embed.add_field(name="User", value=f"{u.mention} ({u})", inline=True)
+            except Exception:
+                log_embed.add_field(name="User ID", value=user_id_str, inline=True)
+            log_embed.add_field(name="Status", value=status_text, inline=True)
+            log_embed.add_field(name="Punishment", value=punishment_type.title(), inline=True)
+            log_embed.add_field(name="Token", value=f"`{token}`", inline=False)
+            try:
+                await modlog_channel.send(embed=log_embed)
+            except Exception:
+                pass
 
 
 async def handle_erlc_rejoin(guild: discord.Guild, roblox_username: str, embed: discord.Embed):
@@ -1998,34 +2052,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         .status-badge.approved { background: rgba(63, 185, 80, 0.15); color: var(--green); }
         .status-badge.denied { background: rgba(248, 81, 73, 0.15); color: var(--red); }
 
-        .note-item {
-            background: var(--bg-primary);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 14px 16px;
-            margin-bottom: 10px;
-            display: flex;
-            gap: 12px;
-            align-items: flex-start;
-        }
-        .note-item:last-child { margin-bottom: 0; }
-        .note-content { flex: 1; }
-        .note-content p { font-size: 13px; line-height: 1.5; word-break: break-word; }
-        .note-content .meta { font-size: 11px; color: var(--text-secondary); margin-top: 6px; }
-        .note-content .meta .author { color: var(--accent); }
-        .note-delete {
-            background: none;
-            border: none;
-            color: var(--text-secondary);
-            cursor: pointer;
-            font-size: 16px;
-            padding: 4px;
-            border-radius: 4px;
-            transition: all 0.2s;
-            line-height: 1;
-        }
-        .note-delete:hover { background: rgba(248, 81, 73, 0.15); color: var(--red); }
-
         .alert {
             padding: 12px 16px;
             border-radius: 8px;
@@ -2052,7 +2078,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             transition: border-color 0.2s, background 0.2s;
         }
         .user-card:last-child { margin-bottom: 0; }
-        .user-card:hover { border-color: var(--accent); background: rgba(1, 211, 255, 0.03); }
+        .user-card:hover { border-color: var(--accent); background: var(--accent-dim); }
         .user-avatar {
             width: 40px; height: 40px;
             border-radius: 50%;
@@ -2161,10 +2187,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                     <span style="color:var(--red);">&#9898;</span> <span>Blacklist</span>
                     <span class="nav-badge" id="nav-blacklist">0</span>
                 </button>
-                <button class="nav-item" data-panel="notes">
-                    <span style="color:var(--accent);">&#9998;</span> <span>Staff Notes</span>
-                    <span class="nav-badge" id="nav-notes">0</span>
-                </button>
                 <div class="nav-divider"></div>
                 <button class="nav-item" data-panel="modpanel">
                     <span>&#9881;</span> <span>Mod Panel</span>
@@ -2197,17 +2219,14 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                     <div class="stat-card">
                         <div class="stat-top"><div class="stat-dot orange"></div><span class="stat-label">Pending</span></div>
                         <div class="num orange" id="stat-pending">--</div>
-                        <div class="stat-sub" id="stat-pending-pct"></div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-top"><div class="stat-dot green"></div><span class="stat-label">Approved</span></div>
                         <div class="num green" id="stat-approved">--</div>
-                        <div class="stat-sub" id="stat-approved-pct"></div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-top"><div class="stat-dot red"></div><span class="stat-label">Denied</span></div>
                         <div class="num red" id="stat-denied">--</div>
-                        <div class="stat-sub" id="stat-denied-pct"></div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-top"><div class="stat-dot" style="background:var(--red);"></div><span class="stat-label">Blacklisted</span></div>
@@ -2233,60 +2252,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                                 <table>
                                     <thead><tr><th>User</th><th>Reason</th><th>Status</th><th>Date</th></tr></thead>
                                     <tbody id="appeals-table-body"><tr><td colspan="4"><div class="empty-state">Loading appeals...</div></td></tr></tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Panel: Pending -->
-                <div class="panel" id="panel-pending">
-                    <div class="card panel-full">
-                        <div class="card-header">
-                            <h2>Pending Appeals</h2>
-                            <span class="badge orange" id="pending-count">0</span>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-wrap">
-                                <table>
-                                    <thead><tr><th>User</th><th>Reason</th><th>Date</th></tr></thead>
-                                    <tbody id="pending-table-body"><tr><td colspan="3"><div class="empty-state">Loading...</div></td></tr></tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Panel: Approved -->
-                <div class="panel" id="panel-approved">
-                    <div class="card panel-full">
-                        <div class="card-header">
-                            <h2>Approved Appeals</h2>
-                            <span class="badge" style="background:rgba(63,185,80,0.15);color:var(--green);" id="approved-count">0</span>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-wrap">
-                                <table>
-                                    <thead><tr><th>User</th><th>Reason</th><th>Date</th></tr></thead>
-                                    <tbody id="approved-table-body"><tr><td colspan="3"><div class="empty-state">Loading...</div></td></tr></tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Panel: Denied -->
-                <div class="panel" id="panel-denied">
-                    <div class="card panel-full">
-                        <div class="card-header">
-                            <h2>Denied Appeals</h2>
-                            <span class="badge" style="background:rgba(248,81,73,0.15);color:var(--red);" id="denied-count">0</span>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-wrap">
-                                <table>
-                                    <thead><tr><th>User</th><th>Reason</th><th>Date</th></tr></thead>
-                                    <tbody id="denied-table-body"><tr><td colspan="3"><div class="empty-state">Loading...</div></td></tr></tbody>
                                 </table>
                             </div>
                         </div>
@@ -2328,25 +2293,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                             </div>
                             <div class="card-body" id="blacklist-table">
                                 <div class="empty-state">No blacklisted users.</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Panel: Staff Notes -->
-                <div class="panel" id="panel-notes">
-                    <div class="card panel-full">
-                        <div class="card-header">
-                            <h2>Staff Notes</h2>
-                            <span class="badge" id="notes-count">0</span>
-                        </div>
-                        <div class="card-body">
-                            <div class="form-row" style="margin-bottom:16px;">
-                                <textarea id="note-input" placeholder="Write a note..." rows="2" style="flex:1;"></textarea>
-                                <button id="note-add-btn" class="btn btn-primary" style="align-self:flex-end;">Add Note</button>
-                            </div>
-                            <div id="notes-list">
-                                <div class="empty-state">No notes yet.</div>
                             </div>
                         </div>
                     </div>
@@ -2468,13 +2414,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             document.getElementById('nav-approved').textContent = data.approved_appeals || 0;
             document.getElementById('nav-denied').textContent = data.denied_appeals || 0;
 
-            var total = (data.total_appeals || 0) || 1;
-            var pct = function(v) { return (v / total * 100).toFixed(0) + '%'; };
-            document.getElementById('stat-pending-pct').textContent = pct(data.pending_appeals || 0) + ' of total';
-            document.getElementById('stat-approved-pct').textContent = pct(data.approved_appeals || 0) + ' of total';
-            document.getElementById('stat-denied-pct').textContent = pct(data.denied_appeals || 0) + ' of total';
-
-            await Promise.all([ loadAppeals(), loadNotes(), loadBlacklist() ]);
+            await Promise.all([ loadAppeals(), loadBlacklist() ]);
         }
 
         function loginClick() {
@@ -2531,27 +2471,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                 }).join('');
             }
 
-            var pending = appeals.filter(function(a) { return a.status === 'pending'; });
-            var approved = appeals.filter(function(a) { return a.status === 'approved'; });
-            var denied = appeals.filter(function(a) { return a.status === 'denied'; });
-
-            document.getElementById('pending-count').textContent = pending.length;
-            document.getElementById('approved-count').textContent = approved.length;
-            document.getElementById('denied-count').textContent = denied.length;
-
-            var renderTable = function(id, list, cols) {
-                var el = document.getElementById(id);
-                if (list.length === 0) {
-                    el.innerHTML = '<tr><td colspan="' + cols + '"><div class="empty-state">None.</div></td></tr>';
-                } else {
-                    el.innerHTML = list.map(function(a) {
-                        return '<tr><td><strong>' + escapeHtml(a.discord_username || 'Unknown') + '</strong><br><code>' + escapeHtml(a.discord_id || '') + '</code></td><td>' + escapeHtml((a.why_banned || a.ban_reason || '').substring(0, 60)) + (a.why_banned && a.why_banned.length > 60 ? '...' : '') + '</td><td>' + formatDate(a.submitted_at) + '</td></tr>';
-                    }).join('');
-                }
-            };
-            renderTable('pending-table-body', pending, 3);
-            renderTable('approved-table-body', approved, 3);
-            renderTable('denied-table-body', denied, 3);
         }
 
         document.querySelectorAll('.tab').forEach(function(tab) {
@@ -2561,39 +2480,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                 currentFilter = this.dataset.filter;
                 loadAppeals();
             });
-        });
-
-        async function loadNotes() {
-            var data = await apiFetch('/api/dashboard/notes');
-            if (!data) return;
-            var list = document.getElementById('notes-list');
-            document.getElementById('notes-count').textContent = data.notes ? data.notes.length : 0;
-            document.getElementById('nav-notes').textContent = data.notes ? data.notes.length : 0;
-            if (!data.notes || data.notes.length === 0) {
-                list.innerHTML = '<div class="empty-state">No notes yet.</div>';
-                return;
-            }
-            list.innerHTML = data.notes.slice().reverse().map(function(n) {
-                var author = escapeHtml(n.author || 'Staff');
-                return '<div class="note-item"><div class="note-content"><p>' + escapeHtml(n.content) + '</p><div class="meta"><span class="author">' + author + '</span> &middot; ' + formatDate(n.timestamp) + '</div></div><button class="note-delete" onclick="deleteNote(\\'' + escapeHtml(n.id) + '\\')">&times;</button></div>';
-            }).join('');
-        }
-
-        async function deleteNote(id) {
-            var data = await apiFetch('/api/dashboard/notes/delete', { method: 'POST', body: JSON.stringify({ id: id }) });
-            if (data && data.success) loadNotes();
-        }
-
-        document.getElementById('note-add-btn').addEventListener('click', async function() {
-            var input = document.getElementById('note-input');
-            var content = input.value.trim();
-            if (!content) return;
-            var data = await apiFetch('/api/dashboard/notes/add', { method: 'POST', body: JSON.stringify({ content: content }) });
-            if (data && data.success) { input.value = ''; loadNotes(); }
-        });
-
-        document.getElementById('note-input').addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); document.getElementById('note-add-btn').click(); }
         });
 
         function renderUserCard(u) {
@@ -2887,60 +2773,6 @@ async def handle_dashboard_appeals(request):
     return web.json_response({"appeals": sorted_appeals})
 
 
-async def handle_dashboard_notes(request):
-    err = require_dashboard_key(request)
-    if err:
-        return err
-    
-    sorted_notes = sorted(
-        notes_db.values(),
-        key=lambda x: x.get("timestamp", ""),
-        reverse=True,
-    )
-    return web.json_response({"notes": sorted_notes})
-
-
-async def handle_dashboard_notes_add(request):
-    err = require_dashboard_key(request)
-    if err:
-        return err
-    
-    try:
-        body = await request.json()
-        content = body.get("content", "").strip()
-        if not content:
-            return web.json_response({"error": "Content required"}, status=400)
-        
-        note_id = f"note_{int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)}"
-        notes_db[note_id] = {
-            "id": note_id,
-            "content": content,
-            "author": "Staff",
-            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        }
-        save_json(NOTES_FILE, notes_db)
-        return web.json_response({"success": True})
-    except Exception:
-        return web.json_response({"error": "Invalid request"}, status=400)
-
-
-async def handle_dashboard_notes_delete(request):
-    err = require_dashboard_key(request)
-    if err:
-        return err
-    
-    try:
-        body = await request.json()
-        note_id = body.get("id", "").strip()
-        if note_id in notes_db:
-            del notes_db[note_id]
-            save_json(NOTES_FILE, notes_db)
-            return web.json_response({"success": True})
-        return web.json_response({"error": "Note not found"}, status=404)
-    except Exception:
-        return web.json_response({"error": "Invalid request"}, status=400)
-
-
 ROOT_HTML = """<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>OSRP</title>
@@ -3001,9 +2833,7 @@ async def start_web_server():
     app.router.add_get("/api/dashboard/blacklist", handle_dashboard_blacklist)
     app.router.add_post("/api/dashboard/blacklist/add", handle_dashboard_blacklist_add)
     app.router.add_post("/api/dashboard/blacklist/remove", handle_dashboard_blacklist_remove)
-    app.router.add_get("/api/dashboard/notes", handle_dashboard_notes)
-    app.router.add_post("/api/dashboard/notes/add", handle_dashboard_notes_add)
-    app.router.add_post("/api/dashboard/notes/delete", handle_dashboard_notes_delete)
+
     
     runner = web.AppRunner(app)
     await runner.setup()
