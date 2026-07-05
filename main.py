@@ -10,7 +10,7 @@ from aiohttp import web
 import secrets
 import asyncio
 
-TOKEN = os.environ["DISCORD_TOKEN"]
+TOKEN = os.environ.get("DISCORD_TOKEN")
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -3092,15 +3092,18 @@ async def blacklist(ctx, action: str = None, user_id: str = None):
 # â”€â”€ Main â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async def main():
-    # Start web server BEFORE connecting to Discord
-    # This ensures Railway health check passes immediately
+    # Start web server always (even without Discord token)
     web_task = asyncio.create_task(start_web_server())
-    
-    # Give the web server a moment to bind
     await asyncio.sleep(0.5)
     
-    async with bot:
-        await bot.start(TOKEN)
+    if TOKEN:
+        async with bot:
+            await bot.start(TOKEN)
+    else:
+        print("[WARNING] DISCORD_TOKEN not set - bot will not connect. Web server running.")
+        # Keep the process alive
+        while True:
+            await asyncio.sleep(3600)
 
 
 asyncio.run(main())
