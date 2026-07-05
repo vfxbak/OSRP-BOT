@@ -1,4 +1,4 @@
-﻿import discord
+import discord
 from discord.ext import commands, tasks
 import json
 import os
@@ -59,7 +59,7 @@ APPEAL_COOLDOWN_DAYS = 60         # Must wait 2 months after a denial
 KICK_REMINDER_WINDOW_MINUTES = 30  # Only remind if user rejoins within 30 min
 
 # Channels
-WELCOME_CHANNEL_ID = 1517684177947070534
+WELCOME_CHANNEL_ID = 1517684680005124136
 DASHBOARD_CHANNEL_ID = 1517682110842798192
 APPEALS_CHANNEL_ID = 1519408033170460672
 INGAME_KICK_CHANNEL_ID = 1521216668402188461  # ERLC webhook channel (kick + join events)
@@ -485,18 +485,39 @@ async def on_member_join(member: discord.Member):
             del kicked_db[member_id_str]
             save_json(KICKED_FILE, kicked_db)
     
-    # â”€â”€ Welcome message â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # —— Welcome message ————————————————————————————————————————————————————
     welcome_channel = guild.get_channel(WELCOME_CHANNEL_ID)
     if not welcome_channel:
+        print(f"[WELCOME] Welcome channel {WELCOME_CHANNEL_ID} not found")
         return
     
-    member_count = sum(1 for m in guild.members if not m.bot)
-    ordinal = get_ordinal(member_count)
-    
-    await welcome_channel.send(
-        content="https://media.discordapp.net/attachments/1523037886977409208/1523418949646155837/IMG_7241.png",
-        suppress_embeds=False
-    )
+    try:
+        member_count = sum(1 for m in guild.members if not m.bot)
+        ordinal = get_ordinal(member_count)
+        
+        content = (
+            f"Welcome to **Oklahoma State Roleplay** {member.mention} who joined.\n"
+            f"You are our **{ordinal}** member!"
+        )
+        
+        view = discord.ui.View()
+        view.add_item(discord.ui.Button(
+            emoji=discord.PartialEmoji(name="member", id=1523432455091261500),
+            label=f"Member Count — {member_count}",
+            style=discord.ButtonStyle.secondary,
+            disabled=True
+        ))
+        view.add_item(discord.ui.Button(
+            emoji=discord.PartialEmoji(name="info", id=1523432618866118767),
+            label="Dashboard",
+            url="https://discord.com/channels/1517682110842798192",
+            style=discord.ButtonStyle.link
+        ))
+        
+        await welcome_channel.send(content=content, view=view)
+        print(f"[WELCOME] Welcome message sent for {member.name} (ID: {member.id})")
+    except Exception as e:
+        print(f"[WELCOME] Error sending welcome message for {member.name}: {e}")
 
 
 # â”€â”€ Appeal Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -713,30 +734,7 @@ async def on_message(message):
     guild_id = str(message.guild.id)
     guild = message.guild
 
-    # Directorship ping protection
-    if message.mentions and not message.author.bot:
-        exempt = message.author.get_role(DIRECTORSHIP_PING_EXEMPT_ROLE)
-        if not exempt:
-            has_directorship_ping = False
-            for mentioned in message.mentions:
-                if isinstance(mentioned, discord.Member) and mentioned.get_role(DIRECTORSHIP_ROLE_ID):
-                    has_directorship_ping = True
-                    break
-            if not has_directorship_ping and message.reference and message.reference.resolved:
-                ref = message.reference.resolved
-                if isinstance(ref, discord.Message) and isinstance(ref.author, discord.Member) and ref.author.get_role(DIRECTORSHIP_ROLE_ID):
-                    has_directorship_ping = True
-            if has_directorship_ping:
-                try:
-                    await message.delete()
-                    embed = discord.Embed(
-                        description="**Please do not @mention directive**\n\nDirectorship should not be pinged unless it is an emergency. Please contact them via DM instead.",
-                        color=EMBED_COLOR,
-                    )
-                    embed.set_footer(text="This message was automatically removed.")
-                    await message.channel.send(embed=embed)
-                except Exception:
-                    pass
+    # Directorship ping protection (disabled)
     # â”€â”€ React to Circle bot punishment embeds â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if message.author.bot and message.embeds:
         embed = message.embeds[0]
@@ -2952,18 +2950,28 @@ async def sendinvites(ctx):
 @bot.command()
 async def samplewelcome(ctx):
     """Preview the welcome message."""
-    await ctx.send("https://media.discordapp.net/attachments/1523037886977409208/1523418949646155837/IMG_7241.png")
-
-
-@bot.command()
-async def sampleping(ctx):
-    """Simulate what happens when someone pings a directorship member."""
-    embed = discord.Embed(
-        description="**Please do not @mention directive**\n\nDirectorship should not be pinged unless it is an emergency. Please contact them via DM instead.",
-        color=EMBED_COLOR,
+    member_count = sum(1 for m in ctx.guild.members if not m.bot)
+    ordinal = get_ordinal(member_count)
+    content = (
+        f"Welcome to **Oklahoma State Roleplay** {ctx.author.mention} who joined.\n"
+        f"You are our **{ordinal}** member!"
     )
-    embed.set_footer(text="This message was automatically removed.")
-    await ctx.send(embed=embed)
+    view = discord.ui.View()
+    view.add_item(discord.ui.Button(
+        emoji=discord.PartialEmoji(name="member", id=1523432455091261500),
+        label=f"Member Count — {member_count}",
+        style=discord.ButtonStyle.secondary,
+        disabled=True
+    ))
+    view.add_item(discord.ui.Button(
+        emoji=discord.PartialEmoji(name="info", id=1523432618866118767),
+        label="Dashboard",
+        url="https://discord.com/channels/1517682110842798192",
+        style=discord.ButtonStyle.link
+    ))
+    await ctx.send(content=content, view=view)
+
+
 
 
 @bot.command()
