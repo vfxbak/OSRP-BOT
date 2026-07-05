@@ -510,7 +510,7 @@ async def on_member_join(member: discord.Member):
         view.add_item(discord.ui.Button(
             emoji=discord.PartialEmoji(name="info", id=1523432618866118767),
             label="Dashboard",
-            url="https://discord.com/channels/1517672283513294868/1517682110842798192",
+            url="https://discord.com/channels/1517672283513294868",
             style=discord.ButtonStyle.link
         ))
         
@@ -2966,7 +2966,7 @@ async def samplewelcome(ctx):
     view.add_item(discord.ui.Button(
         emoji=discord.PartialEmoji(name="info", id=1523432618866118767),
         label="Dashboard",
-        url="https://discord.com/channels/1517672283513294868/1517682110842798192",
+        url="https://discord.com/channels/1517672283513294868",
             style=discord.ButtonStyle.link
         ))
         
