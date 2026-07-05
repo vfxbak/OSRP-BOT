@@ -2974,7 +2974,6 @@ async def samplewelcome(ctx):
 
 
 @bot.command()
-@commands.has_permissions(manage_guild=True)
 async def checkperms(ctx):
     """Check bot permissions in the dashboard channel."""
     channel = ctx.guild.get_channel(1517682110842798192)
