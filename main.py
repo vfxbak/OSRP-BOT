@@ -493,34 +493,16 @@ async def on_member_join(member: discord.Member):
     member_count = sum(1 for m in guild.members if not m.bot)
     ordinal = get_ordinal(member_count)
     
-    embed = discord.Embed(
-        title="Welcome to the community!",
-        description=f"**Oklahoma State Roleplay**\n\n{member.mention} You are our **{ordinal}** member!",
-        color=EMBED_COLOR,
+    welcome_text = (
+        f"**Welcome to the community!**\n\n"
+        f"**Oklahoma State Roleplay**\n\n"
+        f"{member.mention} You are our **{ordinal}** member!"
     )
-    embed.set_thumbnail(url=guild.icon.url if guild.icon else member.display_avatar.url)
-    embed.set_image(url="https://media.discordapp.net/attachments/1523037886977409208/1523418949646155837/IMG_7241.png")
-    embed.set_footer(text=f"Member #{member_count}")
-    
-    class WelcomeView(discord.ui.View):
-        def __init__(self):
-            super().__init__()
-            self.add_item(discord.ui.Button(
-                label="Dashboard",
-                url=f"https://discord.com/channels/{GUILD_ID}/{DASHBOARD_CHANNEL_ID}",
-                style=discord.ButtonStyle.link
-            ))
-            depts = [
-                (discord.PartialEmoji(name="OCPD", id=1517969578435543090), "https://discord.gg/3DHMDaP8aw"),
-                (discord.PartialEmoji(name="OHP", id=1517969606612881660), "https://discord.gg/nyPwdazyZw"),
-                (discord.PartialEmoji(name="OCSO", id=1523420934755844167), "https://discord.gg/zpGMDzgSDu"),
-                (discord.PartialEmoji(name="EMSA", id=1523424479467012248), "https://discord.gg/QAvtTW9SvC"),
-                (discord.PartialEmoji(name="OCFD", id=1517969633896828942), "https://discord.gg/5v49YjdssZ"),
-            ]
-            for emoji, url in depts:
-                self.add_item(discord.ui.Button(emoji=emoji, url=url, style=discord.ButtonStyle.link))
-    
-    await welcome_channel.send(embed=embed, view=WelcomeView())
+    await welcome_channel.send(
+        content="https://media.discordapp.net/attachments/1523037886977409208/1523418949646155837/IMG_7241.png",
+        suppress_embeds=False
+    )
+    await welcome_channel.send(content=welcome_text)
 
 
 # â”€â”€ Appeal Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -715,6 +697,25 @@ async def on_ready():
     if expired:
         save_json(KICKED_FILE, kicked_db)
         print(f"[KICK] Cleaned up {len(expired)} expired kick entries")
+
+    # Send department invite buttons to welcome channel
+    try:
+        dept_channel = bot.get_channel(WELCOME_CHANNEL_ID)
+        if dept_channel:
+            view = discord.ui.View()
+            depts = [
+                (discord.PartialEmoji(name="OCPD", id=1517969578435543090), "https://discord.gg/3DHMDaP8aw"),
+                (discord.PartialEmoji(name="OHP", id=1517969606612881660), "https://discord.gg/nyPwdazyZw"),
+                (discord.PartialEmoji(name="OCSO", id=1523420934755844167), "https://discord.gg/zpGMDzgSDu"),
+                (discord.PartialEmoji(name="EMSA", id=1523424479467012248), "https://discord.gg/QAvtTW9SvC"),
+                (discord.PartialEmoji(name="OCFD", id=1517969633896828942), "https://discord.gg/5v49YjdssZ"),
+            ]
+            for emoji, url in depts:
+                view.add_item(discord.ui.Button(emoji=emoji, url=url, style=discord.ButtonStyle.link))
+            await dept_channel.send("**__Department Invites__**", view=view)
+            print("[DEPT] Department invite buttons sent to welcome channel")
+    except Exception as e:
+        print(f"[DEPT] Failed to send department invites: {e}")
 
 
 @bot.event
@@ -2947,6 +2948,17 @@ async def sampledeny(ctx):
         f"We appreciate your understanding."
     )
     await ctx.send(msg)
+
+
+@bot.command()
+async def sampleping(ctx):
+    """Simulate what happens when someone pings a directorship member."""
+    embed = discord.Embed(
+        description="**Please do not @mention directive**\n\nDirectorship should not be pinged unless it is an emergency. Please contact them via DM instead.",
+        color=EMBED_COLOR,
+    )
+    embed.set_footer(text="This message was automatically removed.")
+    await ctx.send(embed=embed)
 
 
 @bot.command()
