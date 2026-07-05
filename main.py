@@ -58,7 +58,7 @@ APPEAL_COOLDOWN_DAYS = 30  # Must wait 1 month before appealing
 KICK_REMINDER_WINDOW_MINUTES = 30  # Only remind if user rejoins within 30 min
 
 # Channels
-WELCOME_CHANNEL_ID = 1517684680005124136
+WELCOME_CHANNEL_ID = 1517684177947070534
 DASHBOARD_CHANNEL_ID = 1517682110842798192
 APPEALS_CHANNEL_ID = 1519408033170460672
 INGAME_KICK_CHANNEL_ID = 1521216668402188461  # ERLC webhook channel (kick + join events)
@@ -508,6 +508,15 @@ async def on_member_join(member: discord.Member):
                 url=f"https://discord.com/channels/{GUILD_ID}/{DASHBOARD_CHANNEL_ID}",
                 style=discord.ButtonStyle.link
             ))
+            depts = [
+                (discord.PartialEmoji(name="OCPD", id=1517969578435543090), "https://discord.gg/3DHMDaP8aw"),
+                (discord.PartialEmoji(name="OHP", id=1517969606612881660), "https://discord.gg/nyPwdazyZw"),
+                (discord.PartialEmoji(name="OCSO", id=1523420934755844167), "https://discord.gg/zpGMDzgSDu"),
+                (discord.PartialEmoji(name="EMSA", id=1523424479467012248), "https://discord.gg/QAvtTW9SvC"),
+                (discord.PartialEmoji(name="OCFD", id=1517969633896828942), "https://discord.gg/5v49YjdssZ"),
+            ]
+            for emoji, url in depts:
+                self.add_item(discord.ui.Button(emoji=emoji, url=url, style=discord.ButtonStyle.link))
     
     await welcome_channel.send(embed=embed, view=WelcomeView())
 
