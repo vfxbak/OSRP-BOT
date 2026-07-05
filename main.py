@@ -491,11 +491,16 @@ async def on_member_join(member: discord.Member):
     ordinal = get_ordinal(member_count)
     
     embed = discord.Embed(
-        description=f"Welcome {member.mention} to <:OSRP:1517680995678027957> Oklahoma State Roleplay, you are our **{ordinal} member**",
+        title="Welcome to the community!",
+        description=f"**Oklahoma State Roleplay**\n\nWelcome {member.mention}, you are our **{ordinal} member**!",
         color=EMBED_COLOR,
     )
+    embed.set_thumbnail(url=member.display_avatar.url)
+    if guild.icon:
+        embed.set_author(name="Oklahoma State Roleplay", icon_url=guild.icon.url)
+    embed.set_footer(text=f"Member #{member_count}")
     
-    class DashboardButton(discord.ui.View):
+    class WelcomeView(discord.ui.View):
         def __init__(self):
             super().__init__()
             self.add_item(discord.ui.Button(
@@ -504,7 +509,7 @@ async def on_member_join(member: discord.Member):
                 style=discord.ButtonStyle.link
             ))
     
-    await welcome_channel.send(embed=embed, view=DashboardButton())
+    await welcome_channel.send(embed=embed, view=WelcomeView())
 
 
 # â”€â”€ Appeal Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
