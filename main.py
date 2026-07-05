@@ -2951,6 +2951,14 @@ async def sampledeny(ctx):
 
 
 @bot.command()
+async def samplewelcome(ctx):
+    """Preview the welcome message."""
+    await ctx.send("https://media.discordapp.net/attachments/1523037886977409208/1523418949646155837/IMG_7241.png")
+    ordinal = "1st"
+    await ctx.send(f"**Welcome to the community!**\n\n**Oklahoma State Roleplay**\n\n{ctx.author.mention} You are our **{ordinal}** member!")
+
+
+@bot.command()
 async def sampleping(ctx):
     """Simulate what happens when someone pings a directorship member."""
     embed = discord.Embed(
