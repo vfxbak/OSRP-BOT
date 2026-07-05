@@ -493,16 +493,10 @@ async def on_member_join(member: discord.Member):
     member_count = sum(1 for m in guild.members if not m.bot)
     ordinal = get_ordinal(member_count)
     
-    welcome_text = (
-        f"**Welcome to the community!**\n\n"
-        f"**Oklahoma State Roleplay**\n\n"
-        f"{member.mention} You are our **{ordinal}** member!"
-    )
     await welcome_channel.send(
         content="https://media.discordapp.net/attachments/1523037886977409208/1523418949646155837/IMG_7241.png",
         suppress_embeds=False
     )
-    await welcome_channel.send(content=welcome_text)
 
 
 # â”€â”€ Appeal Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -698,24 +692,7 @@ async def on_ready():
         save_json(KICKED_FILE, kicked_db)
         print(f"[KICK] Cleaned up {len(expired)} expired kick entries")
 
-    # Send department invite buttons to welcome channel
-    try:
-        dept_channel = bot.get_channel(WELCOME_CHANNEL_ID)
-        if dept_channel:
-            view = discord.ui.View()
-            depts = [
-                (discord.PartialEmoji(name="OCPD", id=1517969578435543090), "https://discord.gg/3DHMDaP8aw"),
-                (discord.PartialEmoji(name="OHP", id=1517969606612881660), "https://discord.gg/nyPwdazyZw"),
-                (discord.PartialEmoji(name="OCSO", id=1523420934755844167), "https://discord.gg/zpGMDzgSDu"),
-                (discord.PartialEmoji(name="EMSA", id=1523424479467012248), "https://discord.gg/QAvtTW9SvC"),
-                (discord.PartialEmoji(name="OCFD", id=1517969633896828942), "https://discord.gg/5v49YjdssZ"),
-            ]
-            for emoji, url in depts:
-                view.add_item(discord.ui.Button(emoji=emoji, url=url, style=discord.ButtonStyle.link))
-            await dept_channel.send("**__Department Invites__**", view=view)
-            print("[DEPT] Department invite buttons sent to welcome channel")
-    except Exception as e:
-        print(f"[DEPT] Failed to send department invites: {e}")
+
 
 
 @bot.event
@@ -2951,11 +2928,31 @@ async def sampledeny(ctx):
 
 
 @bot.command()
+@commands.has_permissions(manage_guild=True)
+async def sendinvites(ctx):
+    """Send department invite buttons to the welcome channel."""
+    await ctx.message.delete()
+    dept_channel = bot.get_channel(WELCOME_CHANNEL_ID)
+    if not dept_channel:
+        return await ctx.send("Welcome channel not found.", delete_after=5)
+    view = discord.ui.View()
+    depts = [
+        (discord.PartialEmoji(name="OCPD", id=1517969578435543090), "https://discord.gg/3DHMDaP8aw"),
+        (discord.PartialEmoji(name="OHP", id=1517969606612881660), "https://discord.gg/nyPwdazyZw"),
+        (discord.PartialEmoji(name="OCSO", id=1523420934755844167), "https://discord.gg/zpGMDzgSDu"),
+        (discord.PartialEmoji(name="EMSA", id=1523424479467012248), "https://discord.gg/QAvtTW9SvC"),
+        (discord.PartialEmoji(name="OCFD", id=1517969633896828942), "https://discord.gg/5v49YjdssZ"),
+    ]
+    for emoji, url in depts:
+        view.add_item(discord.ui.Button(emoji=emoji, url=url, style=discord.ButtonStyle.link))
+    await dept_channel.send("**__Department Invites__**", view=view)
+    await ctx.send("Department invites sent!", delete_after=3)
+
+
+@bot.command()
 async def samplewelcome(ctx):
     """Preview the welcome message."""
     await ctx.send("https://media.discordapp.net/attachments/1523037886977409208/1523418949646155837/IMG_7241.png")
-    ordinal = "1st"
-    await ctx.send(f"**Welcome to the community!**\n\n**Oklahoma State Roleplay**\n\n{ctx.author.mention} You are our **{ordinal}** member!")
 
 
 @bot.command()
