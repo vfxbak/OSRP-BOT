@@ -85,6 +85,11 @@ APPEALS_FILE = os.path.join(os.path.dirname(__file__), "appeals.json")
 KICKED_FILE = os.path.join(os.path.dirname(__file__), "kicked.json")
 APPEAL_TOKENS_FILE = os.path.join(os.path.dirname(__file__), "appeal_tokens.json")
 BLACKLIST_FILE = os.path.join(os.path.dirname(__file__), "blacklist.json")
+STAFF_BLACKLIST_FILE = os.path.join(os.path.dirname(__file__), "staff_blacklist.json")
+STAFF_BLACKLIST_ROLE_ID = 1523615876929028106
+MELONLY_API_TOKEN = os.environ.get("MELONLY_TOKEN", "")
+MELONLY_FORM_ID = "7474151205980082176"
+MELONLY_API_BASE = "https://api.melonly.xyz/api/v1"
 
 processed_cases: set[str] = set()
 processed_message_ids: set[int] = set()
@@ -109,7 +114,44 @@ appeals_db = load_json(APPEALS_FILE)
 kicked_db = load_json(KICKED_FILE)
 appeal_tokens_db = load_json(APPEAL_TOKENS_FILE)
 blacklist_db = load_json(BLACKLIST_FILE)
+staff_blacklist_db = load_json(STAFF_BLACKLIST_FILE)
 
+
+async def melonly_ensure_blocked_role():
+    """On startup, ensure the staff blacklist role is in Melonly form's blockedDiscordRoles."""
+    if not MELONLY_API_TOKEN:
+        print("[MELONLY] No API token, skipping blocked role setup")
+        return
+    try:
+        async with aiohttp.ClientSession() as session:
+            headers = {"Authorization": f"Bearer {MELONLY_API_TOKEN}"}
+            async with session.get(
+                f"{MELONLY_API_BASE}/server/applications/{MELONLY_FORM_ID}",
+                headers=headers
+            ) as resp:
+                if resp.status != 200:
+                    print(f"[MELONLY] Failed to fetch form: {resp.status}")
+                    return
+                form = await resp.json()
+            
+            blocked = form.get("blockedDiscordRoles", [])
+            role_str = str(STAFF_BLACKLIST_ROLE_ID)
+            if role_str in blocked:
+                print("[MELONLY] Blocked role already configured")
+                return
+            
+            blocked.append(role_str)
+            async with session.patch(
+                f"{MELONLY_API_BASE}/server/applications/{MELONLY_FORM_ID}",
+                headers=headers,
+                json={"blockedDiscordRoles": blocked}
+            ) as resp:
+                if resp.status == 200:
+                    print("[MELONLY] Successfully added blocked role to form")
+                else:
+                    print(f"[MELONLY] Failed to update form: {resp.status}")
+    except Exception as e:
+        print(f"[MELONLY] Error: {e}")
 
 
 MANAGEMENT_ROLE_IDS = {MANAGEMENT_ROLE_ID, DIRECTORSHIP_ROLE_ID}
@@ -712,7 +754,9 @@ async def on_ready():
     if expired:
         save_json(KICKED_FILE, kicked_db)
         print(f"[KICK] Cleaned up {len(expired)} expired kick entries")
-
+    
+    # Ensure Melonly form has staff blacklist role blocked
+    asyncio.create_task(melonly_ensure_blocked_role())
 
 
 
@@ -2096,8 +2140,12 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             </button>
             <span class="nav-spacer"></span>
             <button class="nav-item" data-panel="blacklist">
-                Blacklist
+                Appeal BL
                 <span class="nav-badge" id="nav-blacklist">0</span>
+            </button>
+            <button class="nav-item" data-panel="staff-blacklist">
+                Staff BL
+                <span class="nav-badge" id="nav-staff-blacklist">0</span>
             </button>
         </div>
 
@@ -2130,7 +2178,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                 <div class="panel" id="panel-blacklist">
                     <div class="card panel-full">
                         <div class="card-header">
-                            <h2>Blacklist a User</h2>
+                            <h2>Appeal Blacklist</h2>
                         </div>
                         <div class="card-body">
                             <div id="blacklist-result" class="hidden"></div>
@@ -2160,6 +2208,44 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                         </div>
                         <div class="card-body" id="blacklist-table">
                             <div class="empty-state">No blacklisted users.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel: Staff Blacklist -->
+                <div class="panel" id="panel-staff-blacklist">
+                    <div class="card panel-full">
+                        <div class="card-header">
+                            <h2>Staff Blacklist</h2>
+                        </div>
+                        <div class="card-body">
+                            <div id="staff-blacklist-result" class="hidden"></div>
+                            <div class="form-group">
+                                <label>Discord User ID</label>
+                                <input type="text" id="staff-blacklist-user-id" placeholder="Paste Discord user ID here">
+                            </div>
+                            <div class="form-group">
+                                <label>Reason / Note</label>
+                                <textarea id="staff-blacklist-note" placeholder="Why is this user being staff blacklisted?" rows="3"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Duration</label>
+                                <select id="staff-blacklist-duration" style="width:100%;background:var(--bg-primary);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text-primary);font-size:13px;font-family:inherit;">
+                                    <option value="3m">3 Months</option>
+                                    <option value="6m">6 Months</option>
+                                    <option value="permanent" selected>Permanent</option>
+                                </select>
+                            </div>
+                            <button id="staff-blacklist-add-btn" class="btn btn-primary" style="width:100%;">Add to Staff Blacklist</button>
+                        </div>
+                    </div>
+                    <div class="card panel-full" style="margin-top:16px;">
+                        <div class="card-header">
+                            <h2>Staff Blacklisted Users</h2>
+                            <span class="badge" id="staff-blacklist-count">0</span>
+                        </div>
+                        <div class="card-body" id="staff-blacklist-table">
+                            <div class="empty-state">No staff blacklisted users.</div>
                         </div>
                     </div>
                 </div>
@@ -2246,7 +2332,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             document.getElementById('appeals-count').textContent = data.total_appeals || 0;
             document.getElementById('nav-all').textContent = data.total_appeals || 0;
 
-            await Promise.all([ loadAppeals(), loadBlacklist() ]);
+            await Promise.all([ loadAppeals(), loadBlacklist(), loadStaffBlacklist() ]);
         }
 
         function loginClick() {
@@ -2385,6 +2471,64 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             if (e.key === 'Enter') document.getElementById('mod-bl-btn').click();
         });
 
+        /* ---- Staff Blacklist ---- */
+        function renderStaffUserCard(u) {
+            var avatarHtml = u.avatar_url ? '<img src="' + escapeHtml(u.avatar_url) + '" alt="" loading="lazy">' : '<div class="placeholder">' + (u.username ? u.username[0].toUpperCase() : '?') + '</div>';
+            var nameHtml = u.username && u.username !== u.user_id ? '<span class="name">' + escapeHtml(u.username) + '</span>' : '<span class="name"><code>' + escapeHtml(u.user_id) + '</code></span>';
+            var noteHtml = u.note ? '<div class="note-text">' + escapeHtml(u.note) + '</div>' : '';
+            var durLabel = { '3m': '3 months', '6m': '6 months', 'permanent': 'Permanent' }[u.duration] || 'Permanent';
+            var durColor = u.duration === 'permanent' ? 'var(--red)' : 'var(--orange)';
+            var durHtml = '<div style="font-size:11px;color:' + durColor + ';margin-top:4px;">' + durLabel + '</div>';
+            return '<div class="user-card"><div class="user-avatar">' + avatarHtml + '</div><div class="user-info">' + nameHtml + '<div class="uid">' + escapeHtml(u.user_id) + '</div>' + noteHtml + durHtml + '</div><div class="user-meta"><button class="btn btn-danger btn-sm" onclick="removeStaffBlacklist(\\'' + escapeHtml(u.user_id) + '\\')">Remove</button><div class="added-date">' + formatDate(u.added_at) + '</div></div></div>';
+        }
+
+        async function loadStaffBlacklist() {
+            var data = await apiFetch('/api/dashboard/staff-blacklist');
+            if (!data) return;
+            var table = document.getElementById('staff-blacklist-table');
+            var count = data.users ? data.users.length : 0;
+            document.getElementById('staff-blacklist-count').textContent = count;
+            document.getElementById('nav-staff-blacklist').textContent = count;
+            if (count === 0) {
+                table.innerHTML = '<div class="empty-state">No staff blacklisted users.</div>';
+                return;
+            }
+            table.innerHTML = data.users.map(function(u) { return renderStaffUserCard(u); }).join('');
+        }
+
+        async function removeStaffBlacklist(userId) {
+            var data = await apiFetch('/api/dashboard/staff-blacklist/remove', { method: 'POST', body: JSON.stringify({ user_id: userId }) });
+            if (data && data.success) loadStaffBlacklist();
+        }
+
+        function doStaffBlacklistAdd(userId, note, resultId, btn, duration) {
+            if (!userId) return;
+            duration = duration || 'permanent';
+            if (btn) { btn.disabled = true; btn.textContent = 'Adding...'; }
+            apiFetch('/api/dashboard/staff-blacklist/add', { method: 'POST', body: JSON.stringify({ user_id: userId, note: note, duration: duration }) }).then(function(data) {
+                if (btn) { btn.disabled = false; btn.textContent = 'Add to Staff Blacklist'; }
+                if (data && data.success) {
+                    document.getElementById('staff-blacklist-user-id').value = '';
+                    document.getElementById('staff-blacklist-note').value = '';
+                    var durLabel = { '3m': '3 months', '6m': '6 months', 'permanent': 'permanently' }[duration] || 'permanently';
+                    showAlert(resultId, '<strong>' + escapeHtml(data.user && data.user.username ? data.user.username : userId) + '</strong> staff blacklisted (' + durLabel + ').', 'success');
+                    loadStaffBlacklist();
+                } else if (data && data.error) {
+                    showAlert(resultId, data.error, 'error');
+                }
+            });
+        }
+
+        document.getElementById('staff-blacklist-add-btn').addEventListener('click', function() {
+            var userId = document.getElementById('staff-blacklist-user-id').value.trim();
+            var note = document.getElementById('staff-blacklist-note').value.trim();
+            var duration = document.getElementById('staff-blacklist-duration').value;
+            doStaffBlacklistAdd(userId, note, 'staff-blacklist-result', this, duration);
+        });
+
+        document.getElementById('staff-blacklist-user-id').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') document.getElementById('staff-blacklist-add-btn').click();
+        });
 
     </script>
 </body>
@@ -2415,13 +2559,15 @@ async def handle_dashboard_data(request):
     approved = len([a for a in appeals_db.values() if a.get("status") == "approved"])
     denied = len([a for a in appeals_db.values() if a.get("status") == "denied"])
     blacklist_count = len(blacklist_db)
+    staff_blacklist_count = len(staff_blacklist_db)
     
     return web.json_response({
         "total_appeals": total,
         "pending_appeals": pending,
         "approved_appeals": approved,
         "denied_appeals": denied,
-        "blacklist_count": blacklist_count
+        "blacklist_count": blacklist_count,
+        "staff_blacklist_count": staff_blacklist_count
     })
 
 
@@ -2541,6 +2687,144 @@ async def handle_dashboard_blacklist_remove(request):
         return web.json_response({"error": "Invalid request"}, status=400)
 
 
+async def handle_dashboard_staff_blacklist(request):
+    err = require_dashboard_key(request)
+    if err:
+        return err
+    
+    async def enrich_user(uid, data):
+        entry = {
+            "user_id": uid,
+            "added_by": data.get("added_by", ""),
+            "added_at": data.get("added_at", ""),
+            "username": data.get("username", None),
+            "avatar_url": data.get("avatar_url", None),
+            "note": data.get("note", ""),
+            "duration": data.get("duration", "permanent"),
+            "barred_until": data.get("barred_until", None),
+        }
+        if not entry["username"]:
+            try:
+                user = await bot.fetch_user(int(uid))
+                entry["username"] = str(user)
+                entry["avatar_url"] = str(user.display_avatar.url)
+                staff_blacklist_db[uid]["username"] = entry["username"]
+                staff_blacklist_db[uid]["avatar_url"] = entry["avatar_url"]
+                save_json(STAFF_BLACKLIST_FILE, staff_blacklist_db)
+            except Exception:
+                entry["username"] = uid
+        return entry
+    
+    tasks = [enrich_user(uid, d) for uid, d in staff_blacklist_db.items()]
+    users = await asyncio.gather(*tasks) if tasks else []
+    return web.json_response({"users": users})
+
+
+async def handle_dashboard_staff_blacklist_add(request):
+    err = require_dashboard_key(request)
+    if err:
+        return err
+    
+    try:
+        body = await request.json()
+        user_id = body.get("user_id", "").strip()
+        note = body.get("note", "").strip()
+        duration = body.get("duration", "permanent")
+        if duration not in ("3m", "6m", "permanent"):
+            duration = "permanent"
+        if not user_id:
+            return web.json_response({"error": "User ID required"}, status=400)
+        
+        now = datetime.datetime.now(datetime.timezone.utc)
+        entry = {
+            "added_by": "dashboard",
+            "added_at": now.isoformat(),
+            "note": note,
+            "duration": duration,
+        }
+        if duration == "3m":
+            entry["barred_until"] = (now + datetime.timedelta(days=90)).isoformat()
+        elif duration == "6m":
+            entry["barred_until"] = (now + datetime.timedelta(days=180)).isoformat()
+        else:
+            entry["barred_until"] = None
+        
+        try:
+            user = await bot.fetch_user(int(user_id))
+            entry["username"] = str(user)
+            entry["avatar_url"] = str(user.display_avatar.url)
+        except Exception:
+            entry["username"] = user_id
+        
+        staff_blacklist_db[user_id] = entry
+        save_json(STAFF_BLACKLIST_FILE, staff_blacklist_db)
+        
+        # Assign staff blacklist role
+        guild = bot.get_guild(GUILD_ID)
+        if guild:
+            member = guild.get_member(int(user_id))
+            if member:
+                try:
+                    role = guild.get_role(STAFF_BLACKLIST_ROLE_ID)
+                    if role:
+                        await member.add_roles(role, reason="Staff blacklisted via dashboard")
+                except Exception as e:
+                    print(f"[STAFF-BL] Failed to assign role: {e}")
+        
+        # DM the user
+        try:
+            dur_label = {"3m": "3 months", "6m": "6 months", "permanent": "permanently"}[duration]
+            bl_msg = (
+                f"You have been **staff blacklisted** from **Oklahoma State Roleplay**.\n\n"
+                f"You are barred from applying for staff for **{dur_label}**."
+            )
+            if duration == "permanent":
+                bl_msg = (
+                    f"You have been **staff blacklisted** and **permanently barred** from applying "
+                    f"for staff on **Oklahoma State Roleplay**.\n\n"
+                    f"This decision is final."
+                )
+            if note:
+                bl_msg += f"\n\nReason: {note}"
+            await user.send(bl_msg)
+        except Exception:
+            pass
+        
+        return web.json_response({"success": True, "user": entry})
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=400)
+
+
+async def handle_dashboard_staff_blacklist_remove(request):
+    err = require_dashboard_key(request)
+    if err:
+        return err
+    
+    try:
+        body = await request.json()
+        user_id = body.get("user_id", "").strip()
+        if user_id in staff_blacklist_db:
+            del staff_blacklist_db[user_id]
+            save_json(STAFF_BLACKLIST_FILE, staff_blacklist_db)
+            
+            # Remove staff blacklist role
+            guild = bot.get_guild(GUILD_ID)
+            if guild:
+                member = guild.get_member(int(user_id))
+                if member:
+                    try:
+                        role = guild.get_role(STAFF_BLACKLIST_ROLE_ID)
+                        if role:
+                            await member.remove_roles(role, reason="Staff un-blacklisted via dashboard")
+                    except Exception as e:
+                        print(f"[STAFF-BL] Failed to remove role: {e}")
+            
+            return web.json_response({"success": True})
+        return web.json_response({"error": "User not found"}, status=404)
+    except Exception:
+        return web.json_response({"error": "Invalid request"}, status=400)
+
+
 async def handle_dashboard_guild_info(request):
     err = require_dashboard_key(request)
     if err:
@@ -2642,6 +2926,9 @@ async def start_web_server():
     app.router.add_get("/api/dashboard/blacklist", handle_dashboard_blacklist)
     app.router.add_post("/api/dashboard/blacklist/add", handle_dashboard_blacklist_add)
     app.router.add_post("/api/dashboard/blacklist/remove", handle_dashboard_blacklist_remove)
+    app.router.add_get("/api/dashboard/staff-blacklist", handle_dashboard_staff_blacklist)
+    app.router.add_post("/api/dashboard/staff-blacklist/add", handle_dashboard_staff_blacklist_add)
+    app.router.add_post("/api/dashboard/staff-blacklist/remove", handle_dashboard_staff_blacklist_remove)
 
     
     runner = web.AppRunner(app)
