@@ -62,6 +62,7 @@ KICK_REMINDER_WINDOW_MINUTES = 30  # Only remind if user rejoins within 30 min
 WELCOME_CHANNEL_ID = 1517684680005124136
 DASHBOARD_CHANNEL_ID = 1517682110842798192
 APPEALS_CHANNEL_ID = 1519408033170460672
+AWAITING_BANS_CHANNEL_ID = 1518970285590843592
 INGAME_KICK_CHANNEL_ID = 1521216668402188461  # ERLC webhook channel (kick + join events)
 INGAME_REMINDER_CHANNEL_ID = 1519468672849150022
 INGAME_MODERATING_ROLE_ID = 1520870451923124415
@@ -90,6 +91,7 @@ recent_punishments: dict[str, float] = {}  # user_id -> timestamp
 pending_punishment_channels: dict[str, int] = {}  # user_id -> channel_id where !warn was used
 recent_ping_cooldown: dict[int, float] = {}  # user_id -> timestamp, anti-ping cooldown
 banned_users_pending: dict[int, int] = {}  # user_id -> ban_case_number
+pending_threshold_messages: dict[str, dict] = {}  # user_id -> {"channel_id": int, "message_id": int}
 
 # â”€â”€ Database init â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -424,7 +426,7 @@ def build_kick_reminder_embed(
 @tasks.loop(time=datetime.time(hour=0, minute=0, tzinfo=datetime.timezone.utc))
 async def daily_reminder():
     for guild in bot.guilds:
-        channel = discord.utils.get(guild.text_channels, name="awaiting-bans")
+        channel = guild.get_channel(AWAITING_BANS_CHANNEL_ID)
         if not channel:
             print(f"[REMINDER] Channel 'awaiting-bans' not found in {guild.name}")
             continue
@@ -813,6 +815,8 @@ async def on_message(message):
 
         if matched_punishment:
             text = content
+            # Strip leading Discord custom emoji like <:circleCheck:123456>
+            text = re.sub(r'^<a?:\w+:\d+>\s*', '', text)
             case_prefix = re.match(r'^Case\s*#\d+\s*[-–]\s*', text)
             if case_prefix:
                 text = text[case_prefix.end():]
@@ -867,7 +871,7 @@ async def on_message(message):
 
                     if current_points >= POINT_THRESHOLD and user_id_str not in banned_users_pending:
                         banned_users_pending[int(punished_user.id)] = 0
-                        awb_channel = discord.utils.get(guild.text_channels, name="awaiting-bans")
+                        awb_channel = guild.get_channel(AWAITING_BANS_CHANNEL_ID)
                         if awb_channel:
                             roblox_name = extract_roblox_username(punished_user)
                             roblox_id, roblox_url, _ = await get_roblox_info(roblox_name)
@@ -882,10 +886,26 @@ async def on_message(message):
                                 latest_case=latest,
                                 avatar_url=str(punished_user.display_avatar.url),
                             )
-                            await awb_channel.send(embed=alert_embed)
+                            awb_msg = await awb_channel.send(embed=alert_embed)
+                            pending_threshold_messages[user_id_str] = {
+                                "channel_id": awb_channel.id,
+                                "message_id": awb_msg.id
+                            }
 
                     if matched_punishment[0] in ("ban", "banned", "temp ban", "tempban", "temp banned"):
                         await handle_ban_appeal_dm(punished_user.id, matched_punishment[0], current_points)
+                        # Update threshold embed to completed if it exists
+                        pending = pending_threshold_messages.pop(user_id_str, None)
+                        if pending:
+                            try:
+                                tc = guild.get_channel(pending["channel_id"])
+                                if tc:
+                                    tm = await tc.fetch_message(pending["message_id"])
+                                    updated_embed = tm.embeds[0]
+                                    updated_embed.description = "**__Completed, user has been banned.__** <:alert:1522684494119960586> <:alert:1522684494119960586>"
+                                    await tm.edit(embed=updated_embed)
+                            except Exception:
+                                pass
 
     # â”€â”€ Monitor ingame kick channel (ERLC webhooks) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if message.channel.id == INGAME_KICK_CHANNEL_ID and message.embeds:
