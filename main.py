@@ -3450,7 +3450,29 @@ async def blacklist(ctx, action: str = None, user_id: str = None):
         await ctx.send("Usage: `!blacklist add <user_id>` | `!blacklist remove <user_id>` | `!blacklist list`")
 
 
-# â”€â”€ Main â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+@bot.command()
+async def sampleping(ctx):
+    """Preview the direct @mention anti-ping response."""
+    embed = discord.Embed(
+        title="Directorship Mention Reminder",
+        description=f"<@{ctx.author.id}>\nDo not @ mention members of the **Directorship Team.**\n@Mentioning directors is a violation of rule 4.",
+        color=0x01d3ff
+    )
+    embed.set_image(url="https://media.tenor.com/7694799882666584177/discord-ping-off-no-ping-reply-ping.gif")
+    await ctx.send(embed=embed)
+
+
+@bot.command()
+async def samplereplyping(ctx):
+    """Preview the reply-ping anti-ping response."""
+    embed = discord.Embed(
+        title="Directorship Mention Reminder",
+        description=f"<@{ctx.author.id}>\nDo not @ mention members of the **Directorship Team.**\nPlease disable the @ on the reply feature when replying.",
+        color=0x01d3ff
+    )
+    embed.set_image(url="https://media.tenor.com/7694799882666584177/discord-ping-off-no-ping-reply-ping.gif")
+    await ctx.send(embed=embed)
+
 
 async def main():
     # Start web server always (even without Discord token)
