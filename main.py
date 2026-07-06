@@ -804,96 +804,73 @@ async def on_message(message):
                         print(f"[ANTI-PING] Failed: {e}")
     # â”€â”€ React to Circle bot punishment messages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if message.author.id == 497196352866877441:
-        try:
-            print(f"[CIRCLE] Content: {repr(message.content)} | Embeds: {len(message.embeds)}")
-            content = (message.content or "") + "\n" + (message.embeds[0].description or "" if message.embeds else "")
-            lower = content.lower()
-            print(f"[CIRCLE] Combined: {repr(content[:200])}")
+        lower = message.content.lower()
+        matched_punishment = None
+        for punishment, value in POINTS.items():
+            if punishment in lower:
+                matched_punishment = (punishment, value)
+                break
 
-            matched_punishment = None
-            for punishment, value in POINTS.items():
-                if punishment in lower:
-                    matched_punishment = (punishment, value)
-                    print(f"[CIRCLE] Matched: {punishment}={value}")
-                    break
+        if not matched_punishment:
+            return
 
-            if matched_punishment:
-                text = content
-                text = re.sub(r'^<a?:\w+:\d+>\s*', '', text)
-                text = re.sub(r'^:\w+:\s*', '', text)
+        now = time.time()
+        # Clean stale entries (>10s old)
+        for uid in list(recent_punishments.keys()):
+            if now - recent_punishments[uid] > 10:
+                del recent_punishments[uid]
+                pending_punishment_channels.pop(uid, None)
 
-                user_match = re.search(r'[-–]\s*(.+?)\s+has\s+been\s+', text)
-                if not user_match:
-                    user_match = re.search(r'(.+?)\s+has\s+been\s+', text)
+        # Take the user from !warn (pop from dicts)
+        user_id_str = next(iter(recent_punishments)) if recent_punishments else None
+        if not user_id_str:
+            return
 
-                if user_match:
-                    username = user_match.group(1).strip()
-                    username_lower = username.lower()
-                    print(f"[CIRCLE] Username: {username}")
+        channel_id = pending_punishment_channels.pop(user_id_str, None)
+        recent_punishments.pop(user_id_str, None)
+        punished_user = guild.get_member(int(user_id_str))
+        if not punished_user:
+            return
 
-                    punished_user = None
-                    for m in guild.members:
-                        if m.name.lower() == username_lower or (m.nick and m.nick.lower() == username_lower) or str(m).lower().startswith(username_lower):
-                            punished_user = m
-                            break
+        current_points = points_db.get(user_id_str, 0) + matched_punishment[1]
+        points_db[user_id_str] = current_points
+        save_points(points_db)
+        case_number = str(int(now))
+        processed_cases.add(case_number)
+        cases_db[case_number] = {"user_id": user_id_str, "punishment": matched_punishment[0], "points": matched_punishment[1], "guild_id": guild_id}
+        save_cases(cases_db)
 
-                    if punished_user:
-                        print(f"[CIRCLE] Found user: {punished_user.id}")
-                        user_id_str = str(punished_user.id)
-                        now = time.time()
-                        last_punish_ts = recent_punishments.get(user_id_str)
+        point_word = "point" if current_points == 1 else "points"
+        mention = punished_user.mention
+        target = guild.get_channel(channel_id) if channel_id else message.channel
+        if target:
+            pts_msg = await target.send(f"{mention} now has **{current_points} {point_word}**.")
+            asyncio.create_task(delete_after_delay(pts_msg, 25))
 
-                        if last_punish_ts and (now - last_punish_ts) < 5:
-                            current_points = points_db.get(user_id_str, 0)
-                        else:
-                            current_points = points_db.get(user_id_str, 0)
-                            current_points += matched_punishment[1]
-                            points_db[user_id_str] = current_points
-                            save_points(points_db)
-                            case_number = str(int(now))
-                            processed_cases.add(case_number)
-                            cases_db[case_number] = {"user_id": user_id_str, "punishment": matched_punishment[0], "points": matched_punishment[1], "guild_id": guild_id}
-                            save_cases(cases_db)
+        if current_points >= POINT_THRESHOLD and user_id_str not in banned_users_pending:
+            banned_users_pending[int(punished_user.id)] = 0
+            awb = guild.get_channel(AWAITING_BANS_CHANNEL_ID)
+            if awb:
+                roblox_name = extract_roblox_username(punished_user)
+                roblox_id, roblox_url, _ = await get_roblox_info(roblox_name)
+                latest = get_latest_case(user_id_str)
+                alert_embed = build_alert_embed(discord_username=punished_user.name, discord_id=user_id_str, roblox_username=roblox_name, roblox_id=roblox_id, roblox_url=roblox_url, total_points=current_points, latest_case=latest, avatar_url=str(punished_user.display_avatar.url))
+                awb_msg = await awb.send(embed=alert_embed)
+                pending_threshold_messages[user_id_str] = {"channel_id": awb.id, "message_id": awb_msg.id}
 
-                        point_word = "point" if current_points == 1 else "points"
-                        mention = punished_user.mention
-                        pend_ch = pending_punishment_channels.pop(user_id_str, None)
-                        last_ts = recent_punishments.pop(user_id_str, None)
-                        if pend_ch and last_ts and (now - last_ts) < 5:
-                            target = message.guild.get_channel(pend_ch)
-                        else:
-                            target = message.channel
-                        if target:
-                            m = await target.send(f"{mention} now has **{current_points} {point_word}**.")
-                            print(f"[CIRCLE] Points message sent to {target.id}")
-                            asyncio.create_task(delete_after_delay(m, 25))
-
-                        if current_points >= POINT_THRESHOLD and user_id_str not in banned_users_pending:
-                            banned_users_pending[int(punished_user.id)] = 0
-                            awb = guild.get_channel(AWAITING_BANS_CHANNEL_ID)
-                            if awb:
-                                roblox_name = extract_roblox_username(punished_user)
-                                roblox_id, roblox_url, _ = await get_roblox_info(roblox_name)
-                                latest = get_latest_case(user_id_str)
-                                alert_embed = build_alert_embed(discord_username=punished_user.name, discord_id=user_id_str, roblox_username=roblox_name, roblox_id=roblox_id, roblox_url=roblox_url, total_points=current_points, latest_case=latest, avatar_url=str(punished_user.display_avatar.url))
-                                awb_msg = await awb.send(embed=alert_embed)
-                                pending_threshold_messages[user_id_str] = {"channel_id": awb.id, "message_id": awb_msg.id}
-
-                        if matched_punishment[0] in ("ban", "banned", "temp ban", "tempban", "temp banned"):
-                            await handle_ban_appeal_dm(punished_user.id, matched_punishment[0], current_points)
-                            pending = pending_threshold_messages.pop(user_id_str, None)
-                            if pending:
-                                try:
-                                    tc = guild.get_channel(pending["channel_id"])
-                                    if tc:
-                                        tm = await tc.fetch_message(pending["message_id"])
-                                        e = tm.embeds[0]
-                                        e.description = "**__Completed, user has been banned.__** <:alert:1522684494119960586> <:alert:1522684494119960586>"
-                                        await tm.edit(embed=e)
-                                except Exception:
-                                    pass
-        except Exception as e:
-            print(f"[CIRCLE] Error: {e}")
+        if matched_punishment[0] in ("ban", "banned", "temp ban", "tempban", "temp banned"):
+            await handle_ban_appeal_dm(punished_user.id, matched_punishment[0], current_points)
+            pending = pending_threshold_messages.pop(user_id_str, None)
+            if pending:
+                try:
+                    tc = guild.get_channel(pending["channel_id"])
+                    if tc:
+                        tm = await tc.fetch_message(pending["message_id"])
+                        e = tm.embeds[0]
+                        e.description = "**__Completed, user has been banned.__** <:alert:1522684494119960586> <:alert:1522684494119960586>"
+                        await tm.edit(embed=e)
+                except Exception:
+                    pass
 
     # â”€â”€ Monitor ingame kick channel (ERLC webhooks) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if message.channel.id == INGAME_KICK_CHANNEL_ID and message.embeds:
