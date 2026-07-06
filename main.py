@@ -813,47 +813,37 @@ async def on_message(message):
 
         if matched_punishment:
             case_number = parse_case_number(embed.title or "")
-
-            if case_number and case_number in processed_cases:
-                await bot.process_commands(message)
-                return
-
             user_id = find_user_id_in_embed(embed)
 
             if user_id:
                 punished_user = message.guild.get_member(int(user_id))
                 user_id_str = str(user_id)
-                
-                current_points = points_db.get(user_id_str, 0)
-                current_points += matched_punishment[1]
-                points_db[user_id_str] = current_points
-                save_points(points_db)
 
-                if case_number:
-                    processed_cases.add(case_number)
-                    cases_db[case_number] = {
-                        "user_id": user_id_str,
-                        "punishment": matched_punishment[0],
-                        "points": matched_punishment[1],
-                        "guild_id": guild_id
-                    }
-                    save_cases(cases_db)
+                if case_number and case_number in processed_cases:
+                    current_points = points_db.get(user_id_str, 0)
+                else:
+                    current_points = points_db.get(user_id_str, 0)
+                    current_points += matched_punishment[1]
+                    points_db[user_id_str] = current_points
+                    save_points(points_db)
+
+                    if case_number:
+                        processed_cases.add(case_number)
+                        cases_db[case_number] = {
+                            "user_id": user_id_str,
+                            "punishment": matched_punishment[0],
+                            "points": matched_punishment[1],
+                            "guild_id": guild_id
+                        }
+                        save_cases(cases_db)
 
                 point_word = "point" if current_points == 1 else "points"
-                
                 mention = punished_user.mention if punished_user else f"<@{user_id}>"
 
-                # Skip sending duplicate message if this user was just punished by a !command
-                now = time.time()
-                last_ts = recent_punishments.get(user_id_str)
-                if last_ts and (now - last_ts) < 3:
-                    recent_punishments.pop(user_id_str, None)
-                else:
-                    pts_msg = await message.channel.send(
-                        f"{mention} now has **{current_points} {point_word}**." 
-                        f" ({matched_punishment[0].title()}, +{matched_punishment[1]})"
-                    )
-                    asyncio.create_task(delete_after_delay(pts_msg, 25))
+                pts_msg = await message.channel.send(
+                    f"{mention} now has **{current_points} {point_word}**."
+                )
+                asyncio.create_task(delete_after_delay(pts_msg, 25))
                 
                 # If it's a ban/temp ban, generate appeal token and DM
                 if matched_punishment[0] in ("ban", "banned", "temp ban", "tempban", "temp banned"):
@@ -3027,19 +3017,7 @@ async def apply_punishment(ctx, target_id: str, punishment: str, points: int, du
     cases_db[case_number] = case_data
     save_cases(cases_db)
 
-    member = ctx.guild.get_member(int(user_id_str))
-    mention = member.mention if member else f"<@{user_id_str}>"
-    point_word = "point" if current_points == 1 else "points"
-
     processed_cases.add(case_number)
-    recent_punishments[user_id_str] = time.time()
-    action_name = punishment.title()
-    msg = f"{mention} has been **{action_name}**. They now have **{current_points} {point_word}**."
-    if duration:
-        msg += f" (Duration: {duration})"
-    if reason:
-        msg += f" Reason: {reason}"
-    await ctx.send(msg)
 
 
 @bot.command()
