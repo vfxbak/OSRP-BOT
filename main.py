@@ -805,7 +805,7 @@ async def on_message(message):
                 else:
                     recent_ping_cooldown[message.author.id] = now
                     embed = discord.Embed(
-                        description="Do not @ mention members of the **Directorship Team.**",
+                        description="**Do not @ mention members of the Directorship Team.**\n@ mentioning directors is a violation of [rule 4](https://discord.com/channels/1517672283513294868/1517682110842798192).",
                         color=0x01d3ff
                     )
                     embed.set_image(url="https://media.tenor.com/7694799882666584177/discord-ping-off-no-ping-reply-ping.gif")
@@ -3445,7 +3445,7 @@ async def blacklist(ctx, action: str = None, user_id: str = None):
 async def sampleping(ctx):
     """Preview the direct @mention anti-ping response."""
     embed = discord.Embed(
-        description="Do not @ mention members of the **Directorship Team.**\n@Mentioning directors is a violation of rule 4.",
+        description="**Do not @ mention members of the Directorship Team.**\n@ mentioning directors is a violation of [rule 4](https://discord.com/channels/1517672283513294868/1517682110842798192).",
         color=0x01d3ff
     )
     embed.set_image(url="https://media.tenor.com/7694799882666584177/discord-ping-off-no-ping-reply-ping.gif")
