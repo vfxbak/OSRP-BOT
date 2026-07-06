@@ -1793,7 +1793,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         }
         body {
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: radial-gradient(ellipse at 50% 0%, rgba(79, 195, 247, 0.06) 0%, transparent 60%), var(--bg-primary);
+            background: linear-gradient(135deg, #0b1120 0%, #0f1923 25%, #0a0f1a 50%, #0d1525 75%, #090e18 100%);
             color: var(--text-primary);
             min-height: 100vh;
         }
