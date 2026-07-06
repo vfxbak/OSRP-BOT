@@ -86,7 +86,8 @@ MELONLY_API_BASE = "https://api.melonly.xyz/api/v1"
 
 processed_cases: set[str] = set()
 processed_message_ids: set[int] = set()
-recent_punishments: dict[str, float] = {}  # user_id -> timestamp, to avoid duplicate Circle bot responses
+recent_punishments: dict[str, float] = {}  # user_id -> timestamp
+pending_punishment_channels: dict[str, int] = {}  # user_id -> channel_id where !warn was used
 recent_ping_cooldown: dict[int, float] = {}  # user_id -> timestamp, anti-ping cooldown
 banned_users_pending: dict[int, int] = {}  # user_id -> ban_case_number
 
@@ -828,7 +829,9 @@ async def on_message(message):
                     save_points(points_db)
 
                     if case_number:
-                        processed_cases.add(case_number)
+    processed_cases.add(case_number)
+    recent_punishments[user_id_str] = time.time()
+    pending_punishment_channels[user_id_str] = ctx.channel.id
                         cases_db[case_number] = {
                             "user_id": user_id_str,
                             "punishment": matched_punishment[0],
@@ -840,10 +843,19 @@ async def on_message(message):
                 point_word = "point" if current_points == 1 else "points"
                 mention = punished_user.mention if punished_user else f"<@{user_id}>"
 
-                pts_msg = await message.channel.send(
-                    f"{mention} now has **{current_points} {point_word}**."
-                )
-                asyncio.create_task(delete_after_delay(pts_msg, 25))
+                now = time.time()
+                pending_channel_id = pending_punishment_channels.pop(user_id_str, None)
+                last_ts = recent_punishments.pop(user_id_str, None)
+                if pending_channel_id and last_ts and (now - last_ts) < 5:
+                    target_channel = message.guild.get_channel(pending_channel_id)
+                else:
+                    target_channel = message.channel
+
+                if target_channel:
+                    pts_msg = await target_channel.send(
+                        f"{mention} now has **{current_points} {point_word}**."
+                    )
+                    asyncio.create_task(delete_after_delay(pts_msg, 25))
                 
                 # If it's a ban/temp ban, generate appeal token and DM
                 if matched_punishment[0] in ("ban", "banned", "temp ban", "tempban", "temp banned"):
