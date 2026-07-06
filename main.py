@@ -799,8 +799,8 @@ async def on_message(message):
                         asyncio.create_task(delete_after_delay(reminder, 20))
                     except Exception as e:
                         print(f"[ANTI-PING] Failed: {e}")
-    # â”€â”€ React to Circle bot punishment embeds â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    if message.author.bot and message.embeds:
+    # â”€â”€ React to Circle bot punishment embeds (only in modlogs channel) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    if (message.author.bot and message.embeds and message.channel.id == CIRCLE_MODLOGS_CHANNEL_ID):
         embed = message.embeds[0]
         title = (embed.title or "").lower()
         description = (embed.description or "").lower()
