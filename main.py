@@ -804,22 +804,13 @@ async def on_message(message):
                     pass
                 else:
                     recent_ping_cooldown[message.author.id] = now
-                    is_reply = message.reference and message.reference.resolved
-                    desc = (
-                        f"<@{message.author.id}>\nDo not @ mention members of the **Directorship Team.**\n"
-                        f"Please disable the @ on the reply feature when replying."
-                        if is_reply
-                        else f"<@{message.author.id}>\nDo not @ mention members of the **Directorship Team.**\n"
-                             f"@Mentioning directors is a violation of rule 4."
-                    )
                     embed = discord.Embed(
-                        title="Directorship Mention Reminder",
-                        description=desc,
+                        description="Do not @ mention members of the **Directorship Team.**",
                         color=0x01d3ff
                     )
                     embed.set_image(url="https://media.tenor.com/7694799882666584177/discord-ping-off-no-ping-reply-ping.gif")
                     try:
-                        reminder = await message.reply(embed=embed)
+                        reminder = await message.reply(content=message.author.mention, embed=embed)
                         asyncio.create_task(delete_after_delay(reminder, 20))
                     except Exception as e:
                         print(f"[ANTI-PING] Failed: {e}")
@@ -3454,24 +3445,22 @@ async def blacklist(ctx, action: str = None, user_id: str = None):
 async def sampleping(ctx):
     """Preview the direct @mention anti-ping response."""
     embed = discord.Embed(
-        title="Directorship Mention Reminder",
-        description=f"<@{ctx.author.id}>\nDo not @ mention members of the **Directorship Team.**\n@Mentioning directors is a violation of rule 4.",
+        description="Do not @ mention members of the **Directorship Team.**",
         color=0x01d3ff
     )
     embed.set_image(url="https://media.tenor.com/7694799882666584177/discord-ping-off-no-ping-reply-ping.gif")
-    await ctx.send(embed=embed)
+    await ctx.send(content=ctx.author.mention, embed=embed)
 
 
 @bot.command()
 async def samplereplyping(ctx):
     """Preview the reply-ping anti-ping response."""
     embed = discord.Embed(
-        title="Directorship Mention Reminder",
-        description=f"<@{ctx.author.id}>\nDo not @ mention members of the **Directorship Team.**\nPlease disable the @ on the reply feature when replying.",
+        description="Do not @ mention members of the **Directorship Team.**",
         color=0x01d3ff
     )
     embed.set_image(url="https://media.tenor.com/7694799882666584177/discord-ping-off-no-ping-reply-ping.gif")
-    await ctx.send(embed=embed)
+    await ctx.send(content=ctx.author.mention, embed=embed)
 
 
 async def main():
