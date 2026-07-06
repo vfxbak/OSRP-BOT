@@ -1,6 +1,7 @@
 FROM python:3.11-slim
 
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONWARNINGS=default
 
 WORKDIR /app
 
@@ -11,4 +12,4 @@ COPY . .
 
 EXPOSE 8080
 
-CMD ["python", "main.py"]
+CMD ["sh", "-c", "echo '=== CONTAINER STARTED ===' && python -u main.py"]
