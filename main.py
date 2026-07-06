@@ -94,6 +94,7 @@ MELONLY_API_BASE = "https://api.melonly.xyz/api/v1"
 processed_cases: set[str] = set()
 processed_message_ids: set[int] = set()
 recent_punishments: dict[str, float] = {}  # user_id -> timestamp, to avoid duplicate Circle bot responses
+recent_ping_cooldown: dict[int, float] = {}  # user_id -> timestamp, anti-ping cooldown
 banned_users_pending: dict[int, int] = {}  # user_id -> ban_case_number
 
 # â”€â”€ Data helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -778,7 +779,50 @@ async def on_message(message):
     guild_id = str(message.guild.id)
     guild = message.guild
 
-    # Directorship ping protection (disabled)
+    # Directorship ping protection
+    if not message.author.bot:
+        exempt = message.author.get_role(DIRECTORSHIP_PING_EXEMPT_ROLE)
+        if not exempt:
+            target_member = None
+
+            # Check direct @mentions
+            for mentioned in message.mentions:
+                if isinstance(mentioned, discord.Member) and mentioned.get_role(DIRECTORSHIP_ROLE_ID):
+                    target_member = mentioned
+                    break
+
+            # Check reply pings
+            if not target_member and message.reference and message.reference.resolved:
+                ref = message.reference.resolved
+                if isinstance(ref, discord.Message) and isinstance(ref.author, discord.Member) and ref.author.get_role(DIRECTORSHIP_ROLE_ID):
+                    target_member = ref.author
+
+            if target_member:
+                now = time.time()
+                last_ping = recent_ping_cooldown.get(message.author.id, 0)
+                if now - last_ping < 5:
+                    pass
+                else:
+                    recent_ping_cooldown[message.author.id] = now
+                    is_reply = message.reference and message.reference.resolved
+                    desc = (
+                        f"<@{message.author.id}>\nDo not @ mention members of the **Directorship Team.**\n"
+                        f"Please disable the @ on the reply feature when replying."
+                        if is_reply
+                        else f"<@{message.author.id}>\nDo not @ mention members of the **Directorship Team.**\n"
+                             f"@Mentioning directors is a violation of rule 4."
+                    )
+                    embed = discord.Embed(
+                        title="Directorship Mention Reminder",
+                        description=desc,
+                        color=0x01d3ff
+                    )
+                    embed.set_image(url="https://media.tenor.com/7694799882666584177/discord-ping-off-no-ping-reply-ping.gif")
+                    try:
+                        reminder = await message.reply(embed=embed)
+                        asyncio.create_task(delete_after_delay(reminder, 20))
+                    except Exception as e:
+                        print(f"[ANTI-PING] Failed: {e}")
     # â”€â”€ React to Circle bot punishment embeds â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if message.author.bot and message.embeds:
         embed = message.embeds[0]
