@@ -2,7 +2,7 @@ app = "osrp-bot"
 primary_region = "lhr"
 
 [build]
-  builder = "heroku/buildpacks:20"
+  dockerfile = "Dockerfile"
 
 [http_service]
   internal_port = 8080
