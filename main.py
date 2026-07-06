@@ -93,10 +93,14 @@ recent_ping_cooldown: dict[int, float] = {}  # user_id -> timestamp, anti-ping c
 banned_users_pending: dict[int, int] = {}  # user_id -> ban_case_number
 pending_threshold_messages: dict[str, dict] = {}  # user_id -> {"channel_id": int, "message_id": int}
 
-# â”€â”€ Database init â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-init_db()
-points_db, cases_db, appeals_db, kicked_db, appeal_tokens_db, blacklist_db, staff_blacklist_db = load_all()
+# Declared empty at module level; populated in main() after DB init.
+points_db: dict = {}
+cases_db: dict = {}
+appeals_db: dict = {}
+kicked_db: dict = {}
+appeal_tokens_db: dict = {}
+blacklist_db: dict = {}
+staff_blacklist_db: dict = {}
 
 
 async def melonly_ensure_blocked_role():
@@ -3453,6 +3457,12 @@ async def samplereplyping(ctx):
 
 async def main():
     try:
+        # ── Database init (moved from module-level to catch errors) ──
+        global points_db, cases_db, appeals_db, kicked_db, appeal_tokens_db, blacklist_db, staff_blacklist_db
+        init_db()
+        points_db, cases_db, appeals_db, kicked_db, appeal_tokens_db, blacklist_db, staff_blacklist_db = load_all()
+        print("[STARTUP] Database loaded")
+
         # Start web server always (even without Discord token)
         web_task = asyncio.create_task(start_web_server())
         await asyncio.sleep(0.5)
@@ -3469,8 +3479,9 @@ async def main():
                 await asyncio.sleep(3600)
     except Exception as e:
         print(f"[FATAL] Startup error: {e}")
-        import traceback
+        import traceback, sys
         traceback.print_exc()
+        sys.stdout.flush()
 
 
 try:
@@ -3478,5 +3489,8 @@ try:
 except KeyboardInterrupt:
     close()
 except Exception as e:
-    print(f"[EXCEPTION] {e}")
+    print(f"[EXCEPTION] Unhandled: {e}")
+    import traceback, sys
+    traceback.print_exc()
+    sys.stdout.flush()
     close()
