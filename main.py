@@ -800,38 +800,49 @@ async def on_message(message):
                         asyncio.create_task(delete_after_delay(reminder, 20))
                     except Exception as e:
                         print(f"[ANTI-PING] Failed: {e}")
-    # â”€â”€ React to Circle bot punishment embeds (only in modlogs channel) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    if (message.author.bot and message.embeds and message.channel.id == CIRCLE_MODLOGS_CHANNEL_ID):
-        embed = message.embeds[0]
-        title = (embed.title or "").lower()
-        description = (embed.description or "").lower()
+    # â”€â”€ React to Circle bot punishment messages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    if message.author.id == 497196352866877441:
+        content = message.content
+        lower = content.lower()
 
         matched_punishment = None
         for punishment, value in POINTS.items():
-            if punishment in title or punishment in description:
+            if punishment in lower:
                 matched_punishment = (punishment, value)
                 break
 
         if matched_punishment:
-            case_number = parse_case_number(embed.title or "")
-            user_id = find_user_id_in_embed(embed)
+            text = content
+            case_prefix = re.match(r'^Case\s*#\d+\s*[-–]\s*', text)
+            if case_prefix:
+                text = text[case_prefix.end():]
 
-            if user_id:
-                punished_user = message.guild.get_member(int(user_id))
-                user_id_str = str(user_id)
+            username_match = re.match(r'^(.+?)\s+has\s+been\s+', text)
+            if username_match:
+                username = username_match.group(1).strip()
+                username_lower = username.lower()
 
-                if case_number and case_number in processed_cases:
-                    current_points = points_db.get(user_id_str, 0)
-                else:
-                    current_points = points_db.get(user_id_str, 0)
-                    current_points += matched_punishment[1]
-                    points_db[user_id_str] = current_points
-                    save_points(points_db)
+                punished_user = None
+                for m in guild.members:
+                    if m.name.lower() == username_lower or (m.nick and m.nick.lower() == username_lower) or str(m).lower().startswith(username_lower):
+                        punished_user = m
+                        break
 
-                    if case_number:
-    processed_cases.add(case_number)
-    recent_punishments[user_id_str] = time.time()
-    pending_punishment_channels[user_id_str] = ctx.channel.id
+                if punished_user:
+                    user_id_str = str(punished_user.id)
+                    now = time.time()
+                    last_punish_ts = recent_punishments.get(user_id_str)
+
+                    if last_punish_ts and (now - last_punish_ts) < 5:
+                        current_points = points_db.get(user_id_str, 0)
+                    else:
+                        current_points = points_db.get(user_id_str, 0)
+                        current_points += matched_punishment[1]
+                        points_db[user_id_str] = current_points
+                        save_points(points_db)
+
+                        case_number = str(int(now))
+                        processed_cases.add(case_number)
                         cases_db[case_number] = {
                             "user_id": user_id_str,
                             "punishment": matched_punishment[0],
@@ -840,48 +851,41 @@ async def on_message(message):
                         }
                         save_cases(cases_db)
 
-                point_word = "point" if current_points == 1 else "points"
-                mention = punished_user.mention if punished_user else f"<@{user_id}>"
+                    point_word = "point" if current_points == 1 else "points"
+                    mention = punished_user.mention
 
-                now = time.time()
-                pending_channel_id = pending_punishment_channels.pop(user_id_str, None)
-                last_ts = recent_punishments.pop(user_id_str, None)
-                if pending_channel_id and last_ts and (now - last_ts) < 5:
-                    target_channel = message.guild.get_channel(pending_channel_id)
-                else:
-                    target_channel = message.channel
+                    pending_channel_id = pending_punishment_channels.pop(user_id_str, None)
+                    last_ts = recent_punishments.pop(user_id_str, None)
+                    if pending_channel_id and last_ts and (now - last_ts) < 5:
+                        target_channel = message.guild.get_channel(pending_channel_id)
+                    else:
+                        target_channel = message.channel
 
-                if target_channel:
-                    pts_msg = await target_channel.send(
-                        f"{mention} now has **{current_points} {point_word}**."
-                    )
-                    asyncio.create_task(delete_after_delay(pts_msg, 25))
-                
-                # If threshold reached, send alert to awaiting-bans channel
-                if current_points >= POINT_THRESHOLD and user_id_str not in banned_users_pending:
-                    banned_users_pending[int(user_id_str)] = 0
-                    awb_channel = discord.utils.get(guild.text_channels, name="awaiting-bans")
-                    if awb_channel:
-                        member = punished_user or guild.get_member(int(user_id))
-                        if member:
-                            roblox_name = extract_roblox_username(member)
+                    if target_channel:
+                        pts_msg = await target_channel.send(f"{mention} now has **{current_points} {point_word}**.")
+                        asyncio.create_task(delete_after_delay(pts_msg, 25))
+
+                    if current_points >= POINT_THRESHOLD and user_id_str not in banned_users_pending:
+                        banned_users_pending[int(punished_user.id)] = 0
+                        awb_channel = discord.utils.get(guild.text_channels, name="awaiting-bans")
+                        if awb_channel:
+                            roblox_name = extract_roblox_username(punished_user)
                             roblox_id, roblox_url, _ = await get_roblox_info(roblox_name)
                             latest = get_latest_case(user_id_str)
                             alert_embed = build_alert_embed(
-                                discord_username=member.name,
+                                discord_username=punished_user.name,
                                 discord_id=user_id_str,
                                 roblox_username=roblox_name,
                                 roblox_id=roblox_id,
                                 roblox_url=roblox_url,
                                 total_points=current_points,
                                 latest_case=latest,
-                                avatar_url=str(member.display_avatar.url),
+                                avatar_url=str(punished_user.display_avatar.url),
                             )
                             await awb_channel.send(embed=alert_embed)
-                
-                # If it's a ban/temp ban, generate appeal token and DM
-                if matched_punishment[0] in ("ban", "banned", "temp ban", "tempban", "temp banned"):
-                    await handle_ban_appeal_dm(user_id, matched_punishment[0], current_points)
+
+                    if matched_punishment[0] in ("ban", "banned", "temp ban", "tempban", "temp banned"):
+                        await handle_ban_appeal_dm(punished_user.id, matched_punishment[0], current_points)
 
     # â”€â”€ Monitor ingame kick channel (ERLC webhooks) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if message.channel.id == INGAME_KICK_CHANNEL_ID and message.embeds:
@@ -3052,6 +3056,8 @@ async def apply_punishment(ctx, target_id: str, punishment: str, points: int, du
     save_cases(cases_db)
 
     processed_cases.add(case_number)
+    recent_punishments[user_id_str] = time.time()
+    pending_punishment_channels[user_id_str] = ctx.channel.id
 
 
 @bot.command()
