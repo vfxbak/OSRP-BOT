@@ -810,7 +810,7 @@ async def on_message(message):
     # â”€â”€ React to Circle bot punishment messages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if message.author.id == 497196352866877441:
         print(f"[CIRCLE] Received: id={message.author.id} content={repr(message.content[:300])} channel={message.channel.id}")
-        user_match = re.search(r'\*\*(.+?)\*\*\s+has\s+been\s+', message.content)
+        user_match = re.search(r'\*\*([^*]+)\*\*\s+has\s+been\s+', message.content)
         if not user_match:
             print(f"[CIRCLE] No username match (trying fallback regex)")
             user_match = re.search(r'-\s*(.+?)\s+has\s+been\s+', message.content)
