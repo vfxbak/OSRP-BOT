@@ -804,14 +804,18 @@ async def on_message(message):
                         print(f"[ANTI-PING] Failed: {e}")
     # â”€â”€ React to Circle bot punishment messages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if message.author.id == 497196352866877441:
-        # Try text content first, fall back to embed description/title
-        content = message.content
-        if not content.strip() and message.embeds:
-            embed = message.embeds[0]
-            content = embed.description or embed.title or ""
-        if not content:
-            content = ""
+        # Gather text from content + all embed fields
+        texts = [message.content or ""]
+        for emb in message.embeds:
+            if emb.description:
+                texts.append(emb.description)
+            if emb.title:
+                texts.append(emb.title)
+            for field in emb.fields:
+                texts.append(field.name or "")
+                texts.append(field.value or "")
 
+        content = "\n".join(t for t in texts if t)
         lower = content.lower()
 
         matched_punishment = None
@@ -827,12 +831,11 @@ async def on_message(message):
             text = re.sub(r'^:\w+:\s*', '', text)
             text = re.sub(r'^[\U0001F300-\U0010FFFF]+\s*', '', text)
 
-            # Strip "Case #N - " prefix if present
-            case_match = re.match(r'^Case\s*#\d+\s*[-–]\s+', text)
-            if case_match:
-                text = text[case_match.end():]
-
-            username_match = re.match(r'^(.+?)\s+has\s+been\s+', text)
+            # Find username pattern anywhere: "Case #N - <username> has been <action>"
+            username_match = re.search(r'[-–]\s*(.+?)\s+has\s+been\s+', text)
+            # Fallback: just "username has been <action>" at text start
+            if not username_match:
+                username_match = re.match(r'^(.+?)\s+has\s+been\s+', text)
             if username_match:
                 username = username_match.group(1).strip()
                 username_lower = username.lower()
