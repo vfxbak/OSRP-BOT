@@ -804,7 +804,14 @@ async def on_message(message):
                         print(f"[ANTI-PING] Failed: {e}")
     # â”€â”€ React to Circle bot punishment messages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if message.author.id == 497196352866877441:
+        # Try text content first, fall back to embed description/title
         content = message.content
+        if not content.strip() and message.embeds:
+            embed = message.embeds[0]
+            content = embed.description or embed.title or ""
+        if not content:
+            content = ""
+
         lower = content.lower()
 
         matched_punishment = None
@@ -819,9 +826,11 @@ async def on_message(message):
             text = re.sub(r'^<a?:\w+:\d+>\s*', '', text)
             text = re.sub(r'^:\w+:\s*', '', text)
             text = re.sub(r'^[\U0001F300-\U0010FFFF]+\s*', '', text)
-            case_prefix = re.match(r'^Case\s*#\d+\s*[-–]\s*', text)
-            if case_prefix:
-                text = text[case_prefix.end():]
+
+            # Strip "Case #N - " prefix if present
+            case_match = re.match(r'^Case\s*#\d+\s*[-–]\s+', text)
+            if case_match:
+                text = text[case_match.end():]
 
             username_match = re.match(r'^(.+?)\s+has\s+been\s+', text)
             if username_match:
