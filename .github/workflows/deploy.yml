@@ -9,6 +9,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl deploy --remote-only
+      - run: flyctl secrets set DISCORD_TOKEN="${{ secrets.DISCORD_TOKEN }}" DASHBOARD_KEY="${{ secrets.DASHBOARD_KEY }}" MELONLY_TOKEN="${{ secrets.MELONLY_TOKEN }}" -a osrp-bot
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      - run: flyctl deploy --remote-only -a osrp-bot
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
