@@ -1,6 +1,5 @@
 import discord
 from discord.ext import commands, tasks
-import json
 import os
 import re
 import datetime
@@ -9,6 +8,7 @@ import aiohttp
 from aiohttp import web
 import secrets
 import asyncio
+from database import init_db, load_all, close, save_points, save_cases, save_appeals, save_kicked, save_appeal_tokens, save_blacklist, save_staff_blacklist
 
 TOKEN = os.environ.get("DISCORD_TOKEN")
 
@@ -79,13 +79,6 @@ BASE_URL = BASE_URL.rstrip("/")
 
 EMBED_COLOR = 0x4FC3F7
 
-POINTS_FILE = os.path.join(os.path.dirname(__file__), "points.json")
-CASES_FILE  = os.path.join(os.path.dirname(__file__), "cases.json")
-APPEALS_FILE = os.path.join(os.path.dirname(__file__), "appeals.json")
-KICKED_FILE = os.path.join(os.path.dirname(__file__), "kicked.json")
-APPEAL_TOKENS_FILE = os.path.join(os.path.dirname(__file__), "appeal_tokens.json")
-BLACKLIST_FILE = os.path.join(os.path.dirname(__file__), "blacklist.json")
-STAFF_BLACKLIST_FILE = os.path.join(os.path.dirname(__file__), "staff_blacklist.json")
 STAFF_BLACKLIST_ROLE_ID = 1523615876929028106
 MELONLY_API_TOKEN = os.environ.get("MELONLY_TOKEN", "")
 MELONLY_FORM_ID = "7474151205980082176"
@@ -97,25 +90,10 @@ recent_punishments: dict[str, float] = {}  # user_id -> timestamp, to avoid dupl
 recent_ping_cooldown: dict[int, float] = {}  # user_id -> timestamp, anti-ping cooldown
 banned_users_pending: dict[int, int] = {}  # user_id -> ban_case_number
 
-# â”€â”€ Data helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# â”€â”€ Database init â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-def load_json(path):
-    if os.path.exists(path):
-        with open(path, "r") as f:
-            return json.load(f)
-    return {}
-
-def save_json(path, data):
-    with open(path, "w") as f:
-        json.dump(data, f, indent=4)
-
-points_db = load_json(POINTS_FILE)
-cases_db  = load_json(CASES_FILE)
-appeals_db = load_json(APPEALS_FILE)
-kicked_db = load_json(KICKED_FILE)
-appeal_tokens_db = load_json(APPEAL_TOKENS_FILE)
-blacklist_db = load_json(BLACKLIST_FILE)
-staff_blacklist_db = load_json(STAFF_BLACKLIST_FILE)
+init_db()
+points_db, cases_db, appeals_db, kicked_db, appeal_tokens_db, blacklist_db, staff_blacklist_db = load_all()
 
 
 async def melonly_ensure_blocked_role():
@@ -526,7 +504,7 @@ async def on_member_join(member: discord.Member):
                 await reminder_channel.send(content=mod_role, embed=embed)
             
             del kicked_db[member_id_str]
-            save_json(KICKED_FILE, kicked_db)
+            save_kicked(kicked_db)
     
     # —— Welcome message ————————————————————————————————————————————————————
     welcome_channel = guild.get_channel(WELCOME_CHANNEL_ID)
@@ -629,12 +607,12 @@ class BanAppealModal(discord.ui.Modal, title="Ban Appeal Form"):
             "status": "pending",
             "appeal_token": self.appeal_token
         }
-        save_json(APPEALS_FILE, appeals_db)
+        save_appeals(appeals_db)
         
         # Mark token as used
         if self.appeal_token in appeal_tokens_db:
             appeal_tokens_db[self.appeal_token]["used"] = True
-            save_json(APPEAL_TOKENS_FILE, appeal_tokens_db)
+            save_appeal_tokens(appeal_tokens_db)
         
         guild = bot.get_guild(GUILD_ID)
         appeals_channel = guild.get_channel(APPEALS_CHANNEL_ID)
@@ -696,7 +674,7 @@ class BanAppealModal(discord.ui.Modal, title="Ban Appeal Form"):
                     return
                 
                 appeals_db[appeal_id]["status"] = "approved"
-                save_json(APPEALS_FILE, appeals_db)
+                save_appeals(appeals_db)
                 
                 try:
                     await guild.unban(discord.Object(int(user_id)), reason=f"Ban appeal approved - {button_interaction.user.name}")
@@ -717,7 +695,7 @@ class BanAppealModal(discord.ui.Modal, title="Ban Appeal Form"):
                     return
                 
                 appeals_db[appeal_id]["status"] = "denied"
-                save_json(APPEALS_FILE, appeals_db)
+                save_appeals(appeals_db)
                 
                 await self.send_deny_dm(user_id, guild)
                 
@@ -753,7 +731,7 @@ async def on_ready():
     for uid in expired:
         del kicked_db[uid]
     if expired:
-        save_json(KICKED_FILE, kicked_db)
+        save_kicked(kicked_db)
         print(f"[KICK] Cleaned up {len(expired)} expired kick entries")
     
     # Ensure Melonly form has staff blacklist role blocked
@@ -849,7 +827,7 @@ async def on_message(message):
                 current_points = points_db.get(user_id_str, 0)
                 current_points += matched_punishment[1]
                 points_db[user_id_str] = current_points
-                save_json(POINTS_FILE, points_db)
+                save_points(points_db)
 
                 if case_number:
                     processed_cases.add(case_number)
@@ -859,7 +837,7 @@ async def on_message(message):
                         "points": matched_punishment[1],
                         "guild_id": guild_id
                     }
-                    save_json(CASES_FILE, cases_db)
+                    save_cases(cases_db)
 
                 point_word = "point" if current_points == 1 else "points"
                 
@@ -913,7 +891,7 @@ async def on_message(message):
                     "roblox_created": roblox_created,
                     "kicked_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
                 }
-                save_json(KICKED_FILE, kicked_db)
+                save_kicked(kicked_db)
                 print(f"[KICK] Tracked {roblox_username} (Discord: {kicked_discord_user.id}) - will remind if they rejoin within {KICK_REMINDER_WINDOW_MINUTES} min")
         
         # Check if this is a join embed from someone recently kicked
@@ -958,7 +936,7 @@ async def handle_ban_appeal_dm(user_id, punishment_type: str, total_points: int)
             "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "used": False
         }
-        save_json(APPEAL_TOKENS_FILE, appeal_tokens_db)
+        save_appeal_tokens(appeal_tokens_db)
     else:
         token = existing_token
     
@@ -1035,7 +1013,7 @@ async def handle_erlc_rejoin(guild: discord.Guild, roblox_username: str, embed: 
     
     if time_diff > KICK_REMINDER_WINDOW_MINUTES:
         del kicked_db[member_id_str]
-        save_json(KICKED_FILE, kicked_db)
+        save_kicked(kicked_db)
         return
     
     # Send kick reminder
@@ -1064,7 +1042,7 @@ async def handle_erlc_rejoin(guild: discord.Guild, roblox_username: str, embed: 
     print(f"[KICK] Rejoin detected for {roblox_username} - ban reminder sent")
     
     del kicked_db[member_id_str]
-    save_json(KICKED_FILE, kicked_db)
+    save_kicked(kicked_db)
 
 
 # â”€â”€ Web server for ban appeal website â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -1700,11 +1678,11 @@ async def handle_appeal_submit(request):
         "appeal_token": token,
         "source": "web"
     }
-    save_json(APPEALS_FILE, appeals_db)
+    save_appeals(appeals_db)
     
     # Mark token as used
     token_data["used"] = True
-    save_json(APPEAL_TOKENS_FILE, appeal_tokens_db)
+    save_appeal_tokens(appeal_tokens_db)
     
     # Send to appeals channel
     guild = bot.get_guild(GUILD_ID)
@@ -1767,7 +1745,7 @@ async def handle_appeal_submit(request):
                         return
                     
                     appeals_db[appeal_id]["status"] = "approved"
-                    save_json(APPEALS_FILE, appeals_db)
+                    save_appeals(appeals_db)
                     
                     try:
                         await guild.unban(discord.Object(int(user_id)), reason=f"Ban appeal approved - {button_interaction.user.name}")
@@ -1788,7 +1766,7 @@ async def handle_appeal_submit(request):
                         return
                     
                     appeals_db[appeal_id]["status"] = "denied"
-                    save_json(APPEALS_FILE, appeals_db)
+                    save_appeals(appeals_db)
                     
                     await self.send_deny_dm(user_id, guild)
                     
@@ -2638,7 +2616,7 @@ async def handle_dashboard_blacklist(request):
                 # cache it for next time
                 blacklist_db[uid]["username"] = entry["username"]
                 blacklist_db[uid]["avatar_url"] = entry["avatar_url"]
-                save_json(BLACKLIST_FILE, blacklist_db)
+                save_blacklist(blacklist_db)
             except Exception:
                 entry["username"] = uid
         return entry
@@ -2686,7 +2664,7 @@ async def handle_dashboard_blacklist_add(request):
             entry["username"] = user_id
         
         blacklist_db[user_id] = entry
-        save_json(BLACKLIST_FILE, blacklist_db)
+        save_blacklist(blacklist_db)
         
         # DM the user about the blacklist
         try:
@@ -2722,7 +2700,7 @@ async def handle_dashboard_blacklist_remove(request):
         user_id = body.get("user_id", "").strip()
         if user_id in blacklist_db:
             del blacklist_db[user_id]
-            save_json(BLACKLIST_FILE, blacklist_db)
+            save_blacklist(blacklist_db)
             return web.json_response({"success": True})
         return web.json_response({"error": "User not found"}, status=404)
     except Exception:
@@ -2752,7 +2730,7 @@ async def handle_dashboard_staff_blacklist(request):
                 entry["avatar_url"] = str(user.display_avatar.url)
                 staff_blacklist_db[uid]["username"] = entry["username"]
                 staff_blacklist_db[uid]["avatar_url"] = entry["avatar_url"]
-                save_json(STAFF_BLACKLIST_FILE, staff_blacklist_db)
+                save_staff_blacklist(staff_blacklist_db)
             except Exception:
                 entry["username"] = uid
         return entry
@@ -2799,7 +2777,7 @@ async def handle_dashboard_staff_blacklist_add(request):
             entry["username"] = user_id
         
         staff_blacklist_db[user_id] = entry
-        save_json(STAFF_BLACKLIST_FILE, staff_blacklist_db)
+        save_staff_blacklist(staff_blacklist_db)
         
         # Assign staff blacklist role
         guild = bot.get_guild(GUILD_ID)
@@ -2847,7 +2825,7 @@ async def handle_dashboard_staff_blacklist_remove(request):
         user_id = body.get("user_id", "").strip()
         if user_id in staff_blacklist_db:
             del staff_blacklist_db[user_id]
-            save_json(STAFF_BLACKLIST_FILE, staff_blacklist_db)
+            save_staff_blacklist(staff_blacklist_db)
             
             # Remove staff blacklist role
             guild = bot.get_guild(GUILD_ID)
@@ -3033,7 +3011,7 @@ async def apply_punishment(ctx, target_id: str, punishment: str, points: int, du
     user_id_str = resolve_user_id(target_id)
     current_points = points_db.get(user_id_str, 0) + points
     points_db[user_id_str] = current_points
-    save_json(POINTS_FILE, points_db)
+    save_points(points_db)
 
     case_number = str(int(datetime.datetime.now().timestamp()))
     case_data = {
@@ -3047,7 +3025,7 @@ async def apply_punishment(ctx, target_id: str, punishment: str, points: int, du
     if duration:
         case_data["duration"] = duration
     cases_db[case_number] = case_data
-    save_json(CASES_FILE, cases_db)
+    save_cases(cases_db)
 
     member = ctx.guild.get_member(int(user_id_str))
     mention = member.mention if member else f"<@{user_id_str}>"
@@ -3146,10 +3124,10 @@ async def void(ctx, raw_user: str, *, raw_case: str):
     new_total     = max(0, current - pts_to_remove)
 
     points_db[user_id] = new_total
-    save_json(POINTS_FILE, points_db)
+    save_points(points_db)
 
     del cases_db[case_number]
-    save_json(CASES_FILE, cases_db)
+    save_cases(cases_db)
     processed_cases.add(case_number)
 
     member     = ctx.guild.get_member(int(user_id))
@@ -3203,7 +3181,7 @@ async def sampleappeal(ctx):
         "created_at": (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=31)).isoformat(),
         "used": False
     }
-    save_json(APPEAL_TOKENS_FILE, appeal_tokens_db)
+    save_appeal_tokens(appeal_tokens_db)
     
     try:
         appeal_url = f"{BASE_URL}/appeal"
@@ -3347,7 +3325,7 @@ async def testkick(ctx, roblox_username: str):
         "roblox_created": roblox_created,
         "kicked_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
     }
-    save_json(KICKED_FILE, kicked_db)
+    save_kicked(kicked_db)
     await ctx.send(f"âœ… Tracked kick for {roblox_username} (Discord: {kicked_user.mention}). They will be reminded if they rejoin within {KICK_REMINDER_WINDOW_MINUTES} minutes.")
 
 
@@ -3406,7 +3384,7 @@ async def resendappeallink(ctx, member: discord.Member):
             "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "used": False
         }
-        save_json(APPEAL_TOKENS_FILE, appeal_tokens_db)
+        save_appeal_tokens(appeal_tokens_db)
         try:
             await send_appeal_dm(member, token)
             await ctx.send(f"New appeal code created and sent to {member.mention}.")
@@ -3425,7 +3403,7 @@ async def blacklist(ctx, action: str = None, user_id: str = None):
             "added_by": str(ctx.author.id),
             "added_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
         }
-        save_json(BLACKLIST_FILE, blacklist_db)
+        save_blacklist(blacklist_db)
         await ctx.send(f"User `{user_id}` has been blacklisted from submitting appeals.")
     
     elif action == "remove":
@@ -3433,7 +3411,7 @@ async def blacklist(ctx, action: str = None, user_id: str = None):
             return await ctx.send("Usage: `!blacklist remove <discord_user_id>`")
         if user_id in blacklist_db:
             del blacklist_db[user_id]
-            save_json(BLACKLIST_FILE, blacklist_db)
+            save_blacklist(blacklist_db)
             await ctx.send(f"User `{user_id}` has been removed from the appeal blacklist.")
         else:
             await ctx.send(f"User `{user_id}` is not in the blacklist.")
@@ -3477,6 +3455,7 @@ async def main():
     if TOKEN:
         async with bot:
             await bot.start(TOKEN)
+        close()
     else:
         print("[WARNING] DISCORD_TOKEN not set - bot will not connect. Web server running.")
         # Keep the process alive
@@ -3484,4 +3463,7 @@ async def main():
             await asyncio.sleep(3600)
 
 
-asyncio.run(main())
+try:
+    asyncio.run(main())
+except KeyboardInterrupt:
+    close()
