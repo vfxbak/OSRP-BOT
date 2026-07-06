@@ -3452,22 +3452,31 @@ async def samplereplyping(ctx):
 
 
 async def main():
-    # Start web server always (even without Discord token)
-    web_task = asyncio.create_task(start_web_server())
-    await asyncio.sleep(0.5)
-    
-    if TOKEN:
-        async with bot:
-            await bot.start(TOKEN)
-        close()
-    else:
-        print("[WARNING] DISCORD_TOKEN not set - bot will not connect. Web server running.")
-        # Keep the process alive
-        while True:
-            await asyncio.sleep(3600)
+    try:
+        # Start web server always (even without Discord token)
+        web_task = asyncio.create_task(start_web_server())
+        await asyncio.sleep(0.5)
+        print("[STARTUP] Web server task started")
+
+        if TOKEN:
+            print(f"[STARTUP] Token length: {len(TOKEN)}")
+            async with bot:
+                await bot.start(TOKEN)
+            close()
+        else:
+            print("[WARNING] DISCORD_TOKEN not set - bot will not connect. Web server running.")
+            while True:
+                await asyncio.sleep(3600)
+    except Exception as e:
+        print(f"[FATAL] Startup error: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 try:
     asyncio.run(main())
 except KeyboardInterrupt:
+    close()
+except Exception as e:
+    print(f"[EXCEPTION] {e}")
     close()
