@@ -784,6 +784,7 @@ async def on_message(message):
         exempt = message.author.get_role(DIRECTORSHIP_PING_EXEMPT_ROLE)
         if not exempt:
             target_member = None
+            is_reply_ping = False
 
             # Check direct @mentions
             for mentioned in message.mentions:
@@ -796,6 +797,7 @@ async def on_message(message):
                 ref = message.reference.resolved
                 if isinstance(ref, discord.Message) and isinstance(ref.author, discord.Member) and ref.author.get_role(DIRECTORSHIP_ROLE_ID):
                     target_member = ref.author
+                    is_reply_ping = True
 
             if target_member:
                 now = time.time()
@@ -804,8 +806,12 @@ async def on_message(message):
                     pass
                 else:
                     recent_ping_cooldown[message.author.id] = now
+                    if is_reply_ping:
+                        desc = "**Do not @ mention members of the Directorship Team.**\nPlease disable the `@` on the reply feature when replying to **Directors**."
+                    else:
+                        desc = "**Do not @ mention members of the Directorship Team.**\n@ mentioning directors is a violation of [rule 4](https://discord.com/channels/1517672283513294868/1517682110842798192)."
                     embed = discord.Embed(
-                        description="**Do not @ mention members of the Directorship Team.**\n@ mentioning directors is a violation of [rule 4](https://discord.com/channels/1517672283513294868/1517682110842798192).",
+                        description=desc,
                         color=0x01d3ff
                     )
                     embed.set_image(url="https://media.tenor.com/7694799882666584177/discord-ping-off-no-ping-reply-ping.gif")
@@ -3456,7 +3462,7 @@ async def sampleping(ctx):
 async def samplereplyping(ctx):
     """Preview the reply-ping anti-ping response."""
     embed = discord.Embed(
-        description="Do not @ mention members of the **Directorship Team.**",
+        description="**Do not @ mention members of the Directorship Team.**\nPlease disable the `@` on the reply feature when replying to **Directors**.",
         color=0x01d3ff
     )
     embed.set_image(url="https://media.tenor.com/7694799882666584177/discord-ping-off-no-ping-reply-ping.gif")
