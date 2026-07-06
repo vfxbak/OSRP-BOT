@@ -3462,26 +3462,32 @@ async def main():
         init_db()
         points_db, cases_db, appeals_db, kicked_db, appeal_tokens_db, blacklist_db, staff_blacklist_db = load_all()
         print("[STARTUP] Database loaded")
+        import sys
+        sys.stdout.flush()
 
-        # Start web server always (even without Discord token)
-        web_task = asyncio.create_task(start_web_server())
-        await asyncio.sleep(0.5)
-        print("[STARTUP] Web server task started")
+        # ── Start web server FIRST, await it before bot ──
+        await start_web_server()
+        print("[STARTUP] Web server running on port 8080")
+        sys.stdout.flush()
 
         if TOKEN:
             print(f"[STARTUP] Token length: {len(TOKEN)}")
+            sys.stdout.flush()
             async with bot:
                 await bot.start(TOKEN)
             close()
         else:
             print("[WARNING] DISCORD_TOKEN not set - bot will not connect. Web server running.")
+            sys.stdout.flush()
             while True:
                 await asyncio.sleep(3600)
     except Exception as e:
         print(f"[FATAL] Startup error: {e}")
-        import traceback, sys
+        import traceback
         traceback.print_exc()
+        import sys
         sys.stdout.flush()
+        sys.stderr.flush()
 
 
 try:
