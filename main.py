@@ -815,8 +815,10 @@ async def on_message(message):
 
         if matched_punishment:
             text = content
-            # Strip leading Discord custom emoji like <:circleCheck:123456>
+            # Strip leading emoji (custom <:name:id>, shortcode :name:, or unicode)
             text = re.sub(r'^<a?:\w+:\d+>\s*', '', text)
+            text = re.sub(r'^:\w+:\s*', '', text)
+            text = re.sub(r'^[\U0001F300-\U0010FFFF]+\s*', '', text)
             case_prefix = re.match(r'^Case\s*#\d+\s*[-–]\s*', text)
             if case_prefix:
                 text = text[case_prefix.end():]
