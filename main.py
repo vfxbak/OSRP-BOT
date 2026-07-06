@@ -857,6 +857,28 @@ async def on_message(message):
                     )
                     asyncio.create_task(delete_after_delay(pts_msg, 25))
                 
+                # If threshold reached, send alert to awaiting-bans channel
+                if current_points >= POINT_THRESHOLD and user_id_str not in banned_users_pending:
+                    banned_users_pending[int(user_id_str)] = 0
+                    awb_channel = discord.utils.get(guild.text_channels, name="awaiting-bans")
+                    if awb_channel:
+                        member = punished_user or guild.get_member(int(user_id))
+                        if member:
+                            roblox_name = extract_roblox_username(member)
+                            roblox_id, roblox_url, _ = await get_roblox_info(roblox_name)
+                            latest = get_latest_case(user_id_str)
+                            alert_embed = build_alert_embed(
+                                discord_username=member.name,
+                                discord_id=user_id_str,
+                                roblox_username=roblox_name,
+                                roblox_id=roblox_id,
+                                roblox_url=roblox_url,
+                                total_points=current_points,
+                                latest_case=latest,
+                                avatar_url=str(member.display_avatar.url),
+                            )
+                            await awb_channel.send(embed=alert_embed)
+                
                 # If it's a ban/temp ban, generate appeal token and DM
                 if matched_punishment[0] in ("ban", "banned", "temp ban", "tempban", "temp banned"):
                     await handle_ban_appeal_dm(user_id, matched_punishment[0], current_points)
