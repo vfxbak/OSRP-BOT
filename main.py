@@ -804,48 +804,49 @@ async def on_message(message):
                         print(f"[ANTI-PING] Failed: {e}")
     # â”€â”€ React to Circle bot punishment messages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if message.author.id == 497196352866877441:
+        # Extract username from Circle's format: "✓ Case #N - username has been <action>"
+        user_match = re.search(r'-\s*(.+?)\s+has\s+been\s+', message.content)
+        if not user_match:
+            return
+
+        username = user_match.group(1).strip()
+        punished_user = None
+        for m in guild.members:
+            if m.name == username:
+                punished_user = m
+                break
+        if not punished_user:
+            return
+
         lower = message.content.lower()
         matched_punishment = None
         for punishment, value in POINTS.items():
             if punishment in lower:
                 matched_punishment = (punishment, value)
                 break
-
         if not matched_punishment:
             return
 
+        user_id_str = str(punished_user.id)
         now = time.time()
-        # Clean stale entries (>10s old)
-        for uid in list(recent_punishments.keys()):
-            if now - recent_punishments[uid] > 10:
-                del recent_punishments[uid]
-                pending_punishment_channels.pop(uid, None)
+        last_punish_ts = recent_punishments.get(user_id_str)
 
-        # Take the user from !warn (pop from dicts)
-        user_id_str = next(iter(recent_punishments)) if recent_punishments else None
-        if not user_id_str:
-            return
-
-        channel_id = pending_punishment_channels.pop(user_id_str, None)
-        recent_punishments.pop(user_id_str, None)
-        punished_user = guild.get_member(int(user_id_str))
-        if not punished_user:
-            return
-
-        current_points = points_db.get(user_id_str, 0) + matched_punishment[1]
-        points_db[user_id_str] = current_points
-        save_points(points_db)
-        case_number = str(int(now))
-        processed_cases.add(case_number)
-        cases_db[case_number] = {"user_id": user_id_str, "punishment": matched_punishment[0], "points": matched_punishment[1], "guild_id": guild_id}
-        save_cases(cases_db)
+        # Dedup: if !warn added points within 5s, just read current total
+        if last_punish_ts and (now - last_punish_ts) < 5:
+            current_points = points_db.get(user_id_str, 0)
+        else:
+            current_points = points_db.get(user_id_str, 0) + matched_punishment[1]
+            points_db[user_id_str] = current_points
+            save_points(points_db)
+            case_number = str(int(now))
+            processed_cases.add(case_number)
+            cases_db[case_number] = {"user_id": user_id_str, "punishment": matched_punishment[0], "points": matched_punishment[1], "guild_id": guild_id}
+            save_cases(cases_db)
 
         point_word = "point" if current_points == 1 else "points"
         mention = punished_user.mention
-        target = guild.get_channel(channel_id) if channel_id else message.channel
-        if target:
-            pts_msg = await target.send(f"{mention} now has **{current_points} {point_word}**.")
-            asyncio.create_task(delete_after_delay(pts_msg, 25))
+        pts_msg = await message.channel.send(f"{mention} now has **{current_points} {point_word}**.")
+        asyncio.create_task(delete_after_delay(pts_msg, 25))
 
         if current_points >= POINT_THRESHOLD and user_id_str not in banned_users_pending:
             banned_users_pending[int(punished_user.id)] = 0
