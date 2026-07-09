@@ -3486,7 +3486,10 @@ STORE_IMAGES = {
     "booster": "https://media.discordapp.net/attachments/1523037886977409208/1524738647503667210/190DB35A-B4C9-4412-BEFB-2CFECFBA703F.png?ex=6a50d705&is=6a4f8585&hm=870506b96c4b38a55a7033cbff0a4c88a746d9c808a29cc1b28f0ef09db5daf0&=&format=webp&quality=lossless&width=1146&height=736",
 }
 
-BLUE_LINE = ":blue_circle:" + ":blue_circle:" * 20
+BC = "<:bluecircle:1517928529851842750>"
+BL = "<:blueline:1517920549391831170>"
+ALERT = "<:alert:1522684494119960586>"
+BLUE_LINE = BL * 21
 
 def build_store_main_embed():
     desc = (
@@ -3495,16 +3498,16 @@ def build_store_main_embed():
         "that we have for sale within the server. Please use the dropdown menu to purchase our products!\n\n"
         f"{BLUE_LINE}\n\n"
         "**Available for Purchase:**\n\n"
-        f":blue_circle: Paid Advertisements\n"
-        f":blue_circle: Oklahoma Premium\n"
-        f":blue_circle: Custom Offices\n"
-        f":blue_circle: Donations\n\n"
+        f"{BC} Paid Advertisements\n"
+        f"{BC} Oklahoma Premium\n"
+        f"{BC} Custom Offices\n"
+        f"{BC} Donations\n\n"
         f"{BLUE_LINE}\n\n"
         "**Terms & Conditions:**\n\n"
-        f":blue_circle: We operate on a **zero refund policy**, please ensure you make sure you buy the correct product and ask all questions beforehand.\n\n"
-        f":blue_circle: We don't tolerate any abuse in tickets when claiming products, your purchase may be cancelled with no refund if this happens.\n\n"
-        f":blue_circle: There may be a wait for your ad to be posted due to volume of orders or ping cooldown.\n\n"
-        f":blue_circle: All purchases must be confirmed by <@{STORE_OWNER_ID}> before anything is given."
+        f"{BC} We operate on a **zero refund policy**, please ensure you make sure you buy the correct product and ask all questions beforehand.\n\n"
+        f"{BC} We don't tolerate any abuse in tickets when claiming products, your purchase may be cancelled with no refund if this happens.\n\n"
+        f"{BC} There may be a wait for your ad to be posted due to volume of orders or ping cooldown.\n\n"
+        f"{BC} All purchases must be confirmed by <@{STORE_OWNER_ID}> before anything is given."
     )
     embed = discord.Embed(description=desc, color=0x4FC3F7)
     embed.set_image(url=STORE_IMAGES["store"])
@@ -3518,13 +3521,13 @@ def build_ads_embed():
         "boost your server's activity & member-count, please click on the link you wish to buy!\n\n"
         f"{BLUE_LINE}\n\n"
         "**Sponsored Giveaways:**\n\n"
-        f":blue_circle: `Sponsored Giveaway with @ everyone ping` [Purchase Here!](https://www.roblox.com/catalog/76995579343284/Sponsored-Giveaway-with-everyone-ping)\n\n"
-        f":blue_circle: `Sponsored Giveaway with @ giveaway ping` [Purchase Here!](https://www.roblox.com/catalog/73741206454265/Sponsored-Giveaway-with-Giveaway-Ping)\n\n"
+        f"{BC} `Sponsored Giveaway with @ everyone ping` [Purchase Here!](https://www.roblox.com/catalog/76995579343284/Sponsored-Giveaway-with-everyone-ping)\n\n"
+        f"{BC} `Sponsored Giveaway with @ giveaway ping` [Purchase Here!](https://www.roblox.com/catalog/73741206454265/Sponsored-Giveaway-with-Giveaway-Ping)\n\n"
         "**Paid Advertisements:**\n\n"
-        f":blue_circle: `Paid Ad with @ everyone ping` [Purchase Here!](https://www.roblox.com/catalog/91211279991232/Paid-Ad-with-everyone-ping)\n\n"
-        f":blue_circle: `Paid Ad with @ here ping` [Purchase Here!](https://www.roblox.com/catalog/94213565949192/Paid-Ad-with-here-ping)\n\n"
+        f"{BC} `Paid Ad with @ everyone ping` [Purchase Here!](https://www.roblox.com/catalog/91211279991232/Paid-Ad-with-everyone-ping)\n\n"
+        f"{BC} `Paid Ad with @ here ping` [Purchase Here!](https://www.roblox.com/catalog/94213565949192/Paid-Ad-with-here-ping)\n\n"
         "**Misc:**\n\n"
-        f":blue_circle: `Priority Postage` [Purchase Here!](https://www.roblox.com/catalog/127805501176018/Priority-Postage)"
+        f"{BC} `Priority Postage` [Purchase Here!](https://www.roblox.com/catalog/127805501176018/Priority-Postage)"
     )
     embed = discord.Embed(description=desc, color=0x4FC3F7)
     embed.set_image(url=STORE_IMAGES["ads"])
@@ -3537,11 +3540,11 @@ def build_premium_embed():
         "Oklahoma Premium offers many types of perks to enhance your roleplay quality further!\n\n"
         f"{BLUE_LINE}\n\n"
         "**These perks include:**\n\n"
-        f":blue_circle: An exclusive Oklahoma Premium role\n\n"
-        f":blue_circle: In-game server priority queue & use banned vehicles\n\n"
-        f":blue_circle: Able to use External emojis & GIF's\n\n"
-        f":blue_circle: Able to send Images & Videos in <#1517684680005124136>\n\n"
-        f":blue_circle: Exclusive channels & access to giveaways!"
+        f"{BC} An exclusive Oklahoma Premium role\n\n"
+        f"{BC} In-game server priority queue & use banned vehicles\n\n"
+        f"{BC} Able to use External emojis & GIF's\n\n"
+        f"{BC} Able to send Images & Videos in <#1517684680005124136>\n\n"
+        f"{BC} Exclusive channels & access to giveaways!"
     )
     embed = discord.Embed(description=desc, color=0x4FC3F7)
     embed.set_image(url=STORE_IMAGES["premium"])
@@ -3556,10 +3559,10 @@ def build_donations_embed():
         "our community even further!\n\n"
         f"{BLUE_LINE}\n\n"
         "**We provide many types of donation types which include:**\n\n"
-        f":blue_circle: `Small Donations` [Purchase Here!](https://www.roblox.com/catalog/98338554950452/Small-Donations)\n\n"
-        f":blue_circle: `Standard Donations` [Purchase Here!](https://www.roblox.com/catalog/88740245136512/Standard-Donations)\n\n"
-        f":blue_circle: `Large Donations` [Purchase Here!](https://www.roblox.com/catalog/81250777658825/Large-Donations)\n\n"
-        "-# All donators do receive an exclusive Oklahoma Donator role + an opportunity to access our donation leaderboard, we do not provide any more additional perks!"
+        f"{BC} `Small Donations` [Purchase Here!](https://www.roblox.com/catalog/98338554950452/Small-Donations)\n\n"
+        f"{BC} `Standard Donations` [Purchase Here!](https://www.roblox.com/catalog/88740245136512/Standard-Donations)\n\n"
+        f"{BC} `Large Donations` [Purchase Here!](https://www.roblox.com/catalog/81250777658825/Large-Donations)\n\n"
+        f"-# {ALERT} All donators do receive an exclusive Oklahoma Donator role + an opportunity to access our donation leaderboard, we do not provide any more additional perks!"
     )
     embed = discord.Embed(description=desc, color=0x4FC3F7)
     embed.set_image(url=STORE_IMAGES["donations"])
@@ -3574,10 +3577,10 @@ def build_booster_embed():
         "we choose to reward our server boosters and enhance their roleplay quality in game.\n\n"
         f"{BLUE_LINE}\n\n"
         "**Booster Perks include:**\n\n"
-        f":blue_circle: Access to banned vehicles in-game\n\n"
-        f":blue_circle: Able to use External emojis & GIF permissions\n\n"
-        f":blue_circle: Able to send images & videos to <#1517684680005124136>\n\n"
-        f":blue_circle: Access to exclusive giveaways & a booster only lounge"
+        f"{BC} Access to banned vehicles in-game\n\n"
+        f"{BC} Able to use External emojis & GIF permissions\n\n"
+        f"{BC} Able to send images & videos to <#1517684680005124136>\n\n"
+        f"{BC} Access to exclusive giveaways & a booster only lounge"
     )
     embed = discord.Embed(description=desc, color=0x4FC3F7)
     embed.set_image(url=STORE_IMAGES["booster"])
