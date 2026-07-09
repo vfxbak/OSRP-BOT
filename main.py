@@ -3486,6 +3486,8 @@ STORE_IMAGES = {
     "booster": "https://media.discordapp.net/attachments/1523037886977409208/1524753808117465109/copy_027F3B46-BD11-4193-BC9D-3D27564B8CAE.jpg?ex=6a50e524&is=6a4f93a4&hm=283eebfd49834265c7582173b15edfb84b98919def27db1e24155e9e38b90a58&=&format=webp&width=807&height=454",
 }
 
+
+
 BC = "<:bluecircle:1517928529851842750>"
 BL = "<:blueline:1517920549391831170>"
 ALERT = "<:alert:1522684494119960586>"
