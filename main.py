@@ -3479,11 +3479,11 @@ STORE_CHANNEL_ID = 1517682482814914578
 STORE_OWNER_ID = 624840758188441620
 
 STORE_IMAGES = {
-    "store": "https://media.discordapp.net/attachments/1523037886977409208/1524738646471606302/6D127CAD-2575-4E80-B38E-FCD60CC4078F.png?ex=6a50d705&is=6a4f8585&hm=bd49520fd3cd8fedd4e1916db252ed2359fd1556b2704cdc1083b2982304f013&=&format=webp&quality=lossless&width=1146&height=736",
-    "ads": "https://media.discordapp.net/attachments/1523037886977409208/1524738646853292142/7DBBA4E3-0D2E-4706-A353-4CC5909A382A.png?ex=6a50d705&is=6a4f8585&hm=34d81f92f3dc9203a04adf82cb58fb4b425964bdd717eb9a8313d9539c764f26&=&format=webp&quality=lossless&width=1146&height=736",
-    "premium": "https://media.discordapp.net/attachments/1523037886977409208/1524741631759355965/74B5D018-FFC6-4D9F-A770-ACD42054C58A.png?ex=6a50d9cd&is=6a4f884d&hm=41e8559f747f7a64c751e9bd2a7a6d7d19396b6ff5ab44da035cc1d7652bc6bf&=&format=webp&quality=lossless&width=1308&height=840",
-    "donations": "https://media.discordapp.net/attachments/1523037886977409208/1524738647142694982/C5E999D4-99C5-41B5-BAAB-E948BC891FDD.png?ex=6a50d705&is=6a4f8585&hm=7852c6787fffa4765f3460e2b797b1e97b30d7b9d5e34d34b67c68295898ac9f&=&format=webp&quality=lossless&width=1146&height=736",
-    "booster": "https://media.discordapp.net/attachments/1523037886977409208/1524738647503667210/190DB35A-B4C9-4412-BEFB-2CFECFBA703F.png?ex=6a50d705&is=6a4f8585&hm=870506b96c4b38a55a7033cbff0a4c88a746d9c808a29cc1b28f0ef09db5daf0&=&format=webp&quality=lossless&width=1146&height=736",
+    "store": "https://media.discordapp.net/attachments/1523037886977409208/1524762553216139334/store.png?ex=6a50ed49&is=6a4f9bc9&hm=eeedfd84b1ce56887817501cb35138b3419ccc339fb4c81c933f0505fe7cd14f&=&format=webp&quality=lossless&width=1308&height=736",
+    "ads": "https://media.discordapp.net/attachments/1523037886977409208/1524762553601757335/ads.png?ex=6a50ed49&is=6a4f9bc9&hm=92d3277f063bddf6fa14ccd7018869aee417b5ec4cf7d9beee7f0c26482a3aed&=&format=webp&quality=lossless&width=1308&height=736",
+    "premium": "https://media.discordapp.net/attachments/1523037886977409208/1524754604430987474/F9B34795-816D-4755-B34D-C4BB431730FD.png?ex=6a50e5e2&is=6a4f9462&hm=65c37719b9f56d357bd01f5fce2c0290db29fdcf9a5899508a1dfc10df1cf4b8&=&format=webp&quality=lossless&width=1376&height=774",
+    "donations": "https://media.discordapp.net/attachments/1523037886977409208/1524753807760822393/copy_5D1E4B98-CACB-4EB9-BD0A-9F2D4081AE7F.jpg?ex=6a50e524&is=6a4f93a4&hm=dd1a25ccb91e8b265d39d2871ca5daed6fc6f32bc4ee16f77ace09ac1218c399&=&format=webp",
+    "booster": "https://media.discordapp.net/attachments/1523037886977409208/1524753808117465109/copy_027F3B46-BD11-4193-BC9D-3D27564B8CAE.jpg?ex=6a50e524&is=6a4f93a4&hm=283eebfd49834265c7582173b15edfb84b98919def27db1e24155e9e38b90a58&=&format=webp&width=807&height=454",
 }
 
 BC = "<:bluecircle:1517928529851842750>"
@@ -3587,13 +3587,19 @@ def build_booster_embed():
     return embed
 
 
+SHOP = discord.PartialEmoji(name="shop", id=1524534120573833266)
+PREMIUM = discord.PartialEmoji(name="premium", id=1524534581724844262)
+DONATOR = discord.PartialEmoji(name="donator", id=1524534649873760256)
+BOOSTER = discord.PartialEmoji(name="booster", id=1524534687588942036)
+
+
 class StoreSelect(discord.ui.Select):
     def __init__(self):
         options = [
-            discord.SelectOption(label="Paid Advertisements", emoji="\U0001f6d2", description="Boost your server with ads"),
-            discord.SelectOption(label="Oklahoma Premium", emoji="\U0001f48e", description="Unlock premium perks"),
-            discord.SelectOption(label="Donations", emoji="\U0001f4b0", description="Support the server"),
-            discord.SelectOption(label="Booster Perks", emoji="\U0001f525", description="Server booster rewards"),
+            discord.SelectOption(label="Paid Advertisements", emoji=SHOP, description="Boost your server with ads"),
+            discord.SelectOption(label="Oklahoma Premium", emoji=PREMIUM, description="Unlock premium perks"),
+            discord.SelectOption(label="Donations", emoji=DONATOR, description="Support the server"),
+            discord.SelectOption(label="Booster Perks", emoji=BOOSTER, description="Server booster rewards"),
         ]
         super().__init__(placeholder="Browse Our Products!", options=options, custom_id="store_select")
 
