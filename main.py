@@ -728,6 +728,7 @@ async def on_ready():
         bot.synced = True
     
     daily_reminder.start()
+    bot.add_view(StoreView())
     
     # Clean up expired kicked entries
     now = datetime.datetime.now(datetime.timezone.utc)
@@ -3470,6 +3471,166 @@ async def samplereplyping(ctx):
     )
     embed.set_image(url="https://media.tenor.com/aslruXgPKHEAAAAC/discord-ping.gif")
     await ctx.send(content=ctx.author.mention, embed=embed)
+
+
+# ── Store Embeds ──────────────────────────────────────────────────────────────
+
+STORE_CHANNEL_ID = 1517682482814914578
+STORE_OWNER_ID = 624840758188441620
+
+STORE_IMAGES = {
+    "store": "https://media.discordapp.net/attachments/1523037886977409208/1524738646471606302/6D127CAD-2575-4E80-B38E-FCD60CC4078F.png?ex=6a50d705&is=6a4f8585&hm=bd49520fd3cd8fedd4e1916db252ed2359fd1556b2704cdc1083b2982304f013&=&format=webp&quality=lossless&width=1146&height=736",
+    "ads": "https://media.discordapp.net/attachments/1523037886977409208/1524738646853292142/7DBBA4E3-0D2E-4706-A353-4CC5909A382A.png?ex=6a50d705&is=6a4f8585&hm=34d81f92f3dc9203a04adf82cb58fb4b425964bdd717eb9a8313d9539c764f26&=&format=webp&quality=lossless&width=1146&height=736",
+    "premium": "https://media.discordapp.net/attachments/1523037886977409208/1524741631759355965/74B5D018-FFC6-4D9F-A770-ACD42054C58A.png?ex=6a50d9cd&is=6a4f884d&hm=41e8559f747f7a64c751e9bd2a7a6d7d19396b6ff5ab44da035cc1d7652bc6bf&=&format=webp&quality=lossless&width=1308&height=840",
+    "donations": "https://media.discordapp.net/attachments/1523037886977409208/1524738647142694982/C5E999D4-99C5-41B5-BAAB-E948BC891FDD.png?ex=6a50d705&is=6a4f8585&hm=7852c6787fffa4765f3460e2b797b1e97b30d7b9d5e34d34b67c68295898ac9f&=&format=webp&quality=lossless&width=1146&height=736",
+    "booster": "https://media.discordapp.net/attachments/1523037886977409208/1524738647503667210/190DB35A-B4C9-4412-BEFB-2CFECFBA703F.png?ex=6a50d705&is=6a4f8585&hm=870506b96c4b38a55a7033cbff0a4c88a746d9c808a29cc1b28f0ef09db5daf0&=&format=webp&quality=lossless&width=1146&height=736",
+}
+
+BLUE_LINE = ":blue_circle:" + ":blue_circle:" * 20
+
+def build_store_main_embed():
+    desc = (
+        "**Oklahoma State Roleplay's Store**\n\n"
+        "Welcome to the Oklahoma State Roleplay Store. Here you can explore our exclusive products "
+        "that we have for sale within the server. Please use the dropdown menu to purchase our products!\n\n"
+        f"{BLUE_LINE}\n\n"
+        "**Available for Purchase:**\n\n"
+        f":blue_circle: Paid Advertisements\n"
+        f":blue_circle: Oklahoma Premium\n"
+        f":blue_circle: Custom Offices\n"
+        f":blue_circle: Donations\n\n"
+        f"{BLUE_LINE}\n\n"
+        "**Terms & Conditions:**\n\n"
+        f":blue_circle: We operate on a **zero refund policy**, please ensure you make sure you buy the correct product and ask all questions beforehand.\n\n"
+        f":blue_circle: We don't tolerate any abuse in tickets when claiming products, your purchase may be cancelled with no refund if this happens.\n\n"
+        f":blue_circle: There may be a wait for your ad to be posted due to volume of orders or ping cooldown.\n\n"
+        f":blue_circle: All purchases must be confirmed by <@{STORE_OWNER_ID}> before anything is given."
+    )
+    embed = discord.Embed(description=desc, color=0x4FC3F7)
+    embed.set_image(url=STORE_IMAGES["store"])
+    return embed
+
+
+def build_ads_embed():
+    desc = (
+        "**Paid Advertisements**\n\n"
+        "Here at Oklahoma State Roleplay, we offer many types of affordable Advertisements that help "
+        "boost your server's activity & member-count, please click on the link you wish to buy!\n\n"
+        f"{BLUE_LINE}\n\n"
+        "**Sponsored Giveaways:**\n\n"
+        f":blue_circle: `Sponsored Giveaway with @ everyone ping` [Purchase Here!](https://www.roblox.com/catalog/76995579343284/Sponsored-Giveaway-with-everyone-ping)\n\n"
+        f":blue_circle: `Sponsored Giveaway with @ giveaway ping` [Purchase Here!](https://www.roblox.com/catalog/73741206454265/Sponsored-Giveaway-with-Giveaway-Ping)\n\n"
+        "**Paid Advertisements:**\n\n"
+        f":blue_circle: `Paid Ad with @ everyone ping` [Purchase Here!](https://www.roblox.com/catalog/91211279991232/Paid-Ad-with-everyone-ping)\n\n"
+        f":blue_circle: `Paid Ad with @ here ping` [Purchase Here!](https://www.roblox.com/catalog/94213565949192/Paid-Ad-with-here-ping)\n\n"
+        "**Misc:**\n\n"
+        f":blue_circle: `Priority Postage` [Purchase Here!](https://www.roblox.com/catalog/127805501176018/Priority-Postage)"
+    )
+    embed = discord.Embed(description=desc, color=0x4FC3F7)
+    embed.set_image(url=STORE_IMAGES["ads"])
+    return embed
+
+
+def build_premium_embed():
+    desc = (
+        "**Oklahoma Premium**\n\n"
+        "Oklahoma Premium offers many types of perks to enhance your roleplay quality further!\n\n"
+        f"{BLUE_LINE}\n\n"
+        "**These perks include:**\n\n"
+        f":blue_circle: An exclusive Oklahoma Premium role\n\n"
+        f":blue_circle: In-game server priority queue & use banned vehicles\n\n"
+        f":blue_circle: Able to use External emojis & GIF's\n\n"
+        f":blue_circle: Able to send Images & Videos in <#1517684680005124136>\n\n"
+        f":blue_circle: Exclusive channels & access to giveaways!"
+    )
+    embed = discord.Embed(description=desc, color=0x4FC3F7)
+    embed.set_image(url=STORE_IMAGES["premium"])
+    return embed
+
+
+def build_donations_embed():
+    desc = (
+        "**Donations**\n\n"
+        "Donations are a key part of Oklahoma State Roleplay in terms of funding. Your contribution "
+        "will boost our server's quality in many aspects, allowing us to host more giveaways & enhance "
+        "our community even further!\n\n"
+        f"{BLUE_LINE}\n\n"
+        "**We provide many types of donation types which include:**\n\n"
+        f":blue_circle: `Small Donations` [Purchase Here!](https://www.roblox.com/catalog/98338554950452/Small-Donations)\n\n"
+        f":blue_circle: `Standard Donations` [Purchase Here!](https://www.roblox.com/catalog/88740245136512/Standard-Donations)\n\n"
+        f":blue_circle: `Large Donations` [Purchase Here!](https://www.roblox.com/catalog/81250777658825/Large-Donations)\n\n"
+        "-# All donators do receive an exclusive Oklahoma Donator role + an opportunity to access our donation leaderboard, we do not provide any more additional perks!"
+    )
+    embed = discord.Embed(description=desc, color=0x4FC3F7)
+    embed.set_image(url=STORE_IMAGES["donations"])
+    return embed
+
+
+def build_booster_embed():
+    desc = (
+        "**Booster Perks**\n\n"
+        "Server boosts are a key feature in our server as it provides us awesome perks such as role "
+        "icons, a custom vanity link & much more to keep our server aesthetically pleasing! Therefore "
+        "we choose to reward our server boosters and enhance their roleplay quality in game.\n\n"
+        f"{BLUE_LINE}\n\n"
+        "**Booster Perks include:**\n\n"
+        f":blue_circle: Access to banned vehicles in-game\n\n"
+        f":blue_circle: Able to use External emojis & GIF permissions\n\n"
+        f":blue_circle: Able to send images & videos to <#1517684680005124136>\n\n"
+        f":blue_circle: Access to exclusive giveaways & a booster only lounge"
+    )
+    embed = discord.Embed(description=desc, color=0x4FC3F7)
+    embed.set_image(url=STORE_IMAGES["booster"])
+    return embed
+
+
+class StoreSelect(discord.ui.Select):
+    def __init__(self):
+        options = [
+            discord.SelectOption(label="Paid Advertisements", emoji="\U0001f6d2", description="Boost your server with ads"),
+            discord.SelectOption(label="Oklahoma Premium", emoji="\U0001f48e", description="Unlock premium perks"),
+            discord.SelectOption(label="Donations", emoji="\U0001f4b0", description="Support the server"),
+            discord.SelectOption(label="Booster Perks", emoji="\U0001f525", description="Server booster rewards"),
+        ]
+        super().__init__(placeholder="Browse Our Products!", options=options, custom_id="store_select")
+
+    async def callback(self, interaction: discord.Interaction):
+        mapping = {
+            "Paid Advertisements": build_ads_embed,
+            "Oklahoma Premium": build_premium_embed,
+            "Donations": build_donations_embed,
+            "Booster Perks": build_booster_embed,
+        }
+        embed_fn = mapping.get(self.values[0])
+        if not embed_fn:
+            return
+        embed = embed_fn()
+        view = None
+        if self.values[0] == "Oklahoma Premium":
+            view = discord.ui.View()
+            btn = discord.ui.Button(label="Purchase Oklahoma+", url="https://www.roblox.com/catalog/109384260833833/Oklahoma-Premium")
+            view.add_item(btn)
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+
+
+class StoreView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        self.add_item(StoreSelect())
+
+
+@bot.command()
+@commands.is_owner()
+async def store(ctx):
+    """Send the OSRP store embed to the store channel."""
+    if ctx.author.id != STORE_OWNER_ID:
+        return
+    channel = ctx.guild.get_channel(STORE_CHANNEL_ID)
+    if not channel:
+        return await ctx.send(f"Store channel not found: {STORE_CHANNEL_ID}")
+    embed = build_store_main_embed()
+    await channel.send(embed=embed, view=StoreView())
+    await ctx.send(f"Store embed sent to <#{STORE_CHANNEL_ID}>.")
 
 
 async def main():
